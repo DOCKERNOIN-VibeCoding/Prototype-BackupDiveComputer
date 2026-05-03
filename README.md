@@ -1,4 +1,10 @@
 
+
+# Prototype-BackupDiveComputer
+
+Prototype backup dive computer project based on ESP32-S3, Wokwi simulation, PlatformIO, and OLED UI.
+
+
 # Warning
 ## This project is experimental and must not be used as a primary, secondary, or backup dive computer for real diving.
 
@@ -51,10 +57,6 @@ profile pause
 profile resume
 ```
 
-
-# Prototype-BackupDiveComputer
-
-Prototype backup dive computer project based on ESP32-S3, Wokwi simulation, PlatformIO, and OLED UI.
 
 
 ## Status
