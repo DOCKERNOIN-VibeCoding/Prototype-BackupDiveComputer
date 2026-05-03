@@ -1,1 +1,0 @@
-pio run -e esp32s3_sim
