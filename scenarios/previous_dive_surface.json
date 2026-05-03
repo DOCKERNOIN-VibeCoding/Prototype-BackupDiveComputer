@@ -1,0 +1,46 @@
+{
+  "name": "Previous Dive Surface Test",
+  "description": "Start simulation with previous dive log and active no-fly time",
+  "loop": false,
+
+  "initial": {
+    "tempC": 24.0
+  },
+
+  "time": {
+    "startEpoch": 1735689600,
+    "tzOffsetMin": 540
+  },
+
+  "preload": {
+    "enabled": true,
+
+    "diveCount": 3,
+
+    "lastDive": {
+      "durationSec": 2460,
+      "maxDepthM": 28.6,
+      "minTempC": 22.0
+    },
+
+    "surfaceIntervalSec": 5040,
+    "noFlyRemainSec": 41520,
+
+    "gps": {
+      "valid": true,
+      "lat": 33.4996,
+      "lon": 126.5312,
+      "place": "Jeju"
+    }
+  },
+
+  "points": [
+    { "t": 0,   "depth": 0.0,  "temp": 24.0 },
+    { "t": 120, "depth": 0.0,  "temp": 24.0 },
+    { "t": 240, "depth": 12.0, "temp": 23.0 },
+    { "t": 600, "depth": 12.0, "temp": 22.0 },
+    { "t": 780, "depth": 5.0,  "temp": 23.0 },
+    { "t": 960, "depth": 5.0,  "temp": 23.0 },
+    { "t": 1080, "depth": 0.0, "temp": 24.0 }
+  ]
+}

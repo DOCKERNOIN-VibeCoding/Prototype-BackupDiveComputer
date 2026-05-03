@@ -1,0 +1,40 @@
+{
+  "name": "Deco 30m Long Bottom Time",
+  "description": "Long 30m dive intended to trigger decompression obligation",
+  "loop": false,
+
+  "initial": {
+    "batteryPct": 93,
+    "gfLow": 40,
+    "gfHigh": 85,
+    "tempC": 24.0
+  },
+
+  "time": {
+    "startEpoch": 1735689600,
+    "tzOffsetMin": 540
+  },
+
+  "points": [
+    { "t": 0,    "depth": 0.0,  "temp": 24.0 },
+    { "t": 30,   "depth": 0.0,  "temp": 24.0 },
+
+    { "t": 180,  "depth": 30.0, "temp": 22.0 },
+
+    { "t": 1800, "depth": 30.0, "temp": 21.0 },
+
+    { "t": 1950, "depth": 9.0,  "temp": 22.0 },
+
+    { "t": 2100, "depth": 6.0,  "temp": 22.0 },
+
+    { "t": 2400, "depth": 6.0,  "temp": 22.0 },
+
+    { "t": 2550, "depth": 3.0,  "temp": 23.0 },
+
+    { "t": 2850, "depth": 3.0,  "temp": 23.0 },
+
+    { "t": 3000, "depth": 0.0,  "temp": 24.0 },
+
+    { "t": 3300, "depth": 0.0,  "temp": 24.0 }
+  ]
+}

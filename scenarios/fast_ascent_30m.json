@@ -1,0 +1,35 @@
+{
+  "name": "Fast Ascent 30m Test",
+  "description": "30m dive with fast ascent to verify ascent bar dot pattern and alarm",
+  "loop": false,
+
+  "initial": {
+    "batteryPct": 95,
+    "gfLow": 40,
+    "gfHigh": 85,
+    "tempC": 24.0
+  },
+
+  "time": {
+    "startEpoch": 1735689600,
+    "tzOffsetMin": 540
+  },
+
+  "points": [
+    { "t": 0,   "depth": 0.0,  "temp": 24.0 },
+    { "t": 30,  "depth": 0.0,  "temp": 24.0 },
+
+    { "t": 150, "depth": 30.0, "temp": 22.0 },
+
+    { "t": 360, "depth": 30.0, "temp": 22.0 },
+
+    { "t": 420, "depth": 10.0, "temp": 23.0 },
+
+    { "t": 450, "depth": 5.0,  "temp": 23.0 },
+
+    { "t": 520, "depth": 0.0,  "temp": 24.0 },
+
+    { "t": 700, "depth": 0.0,  "temp": 24.0 }
+  ]
+}
+

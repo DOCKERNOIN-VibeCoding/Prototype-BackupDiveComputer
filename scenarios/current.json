@@ -1,0 +1,79 @@
+{
+  "name": "Current Default 30m Dive",
+  "description": "30m dive, normal ascent at 10m/min, safety stop, surface",
+  "loop": false,
+
+  "initial": {
+    "tempC": 24.0
+  },
+
+  "time": {
+    "startEpoch": 1735689600,
+    "tzOffsetMin": 540
+  },
+
+  "points": [
+    { "t": 0,   "depth": 0.0,  "temp": 24.0 },
+    { "t": 30,  "depth": 0.0,  "temp": 24.0 },
+
+    { "t": 150, "depth": 30.0, "temp": 23.0 },
+
+    { "t": 480, "depth": 30.0, "temp": 22.0 },
+
+    { "t": 630, "depth": 5.0,  "temp": 23.0 },
+
+    { "t": 810, "depth": 5.0,  "temp": 23.0 },
+
+    { "t": 910, "depth": 0.0,  "temp": 24.0 },
+
+    { "t": 1100, "depth": 0.0, "temp": 24.0 }
+  ]
+}
+
+{
+  "name": "Surface After Previous Dive",
+  "description": "Surface screen with previous dive log and remaining no-fly time",
+  "loop": false,
+
+  "initial": {
+    "tempC": 24.0
+  },
+
+  "time": {
+    "startEpoch": 1735689600,
+    "tzOffsetMin": 540
+  },
+
+  "preload": {
+    "enabled": true,
+
+    "diveCount": 3,
+
+    "lastDive": {
+      "durationSec": 2460,
+      "maxDepthM": 28.6,
+      "minTempC": 22.0
+    },
+
+    "surfaceIntervalSec": 5040,
+    "noFlyRemainSec": 41520,
+
+    "gps": {
+      "valid": true,
+      "lat": 33.4996,
+      "lon": 126.5312,
+      "place": "Jeju"
+    }
+  },
+
+  "points": [
+    { "t": 0,   "depth": 0.0,  "temp": 24.0 },
+    { "t": 60,  "depth": 0.0,  "temp": 24.0 },
+
+    { "t": 180, "depth": 18.0, "temp": 23.0 },
+    { "t": 600, "depth": 18.0, "temp": 22.0 },
+    { "t": 780, "depth": 5.0,  "temp": 23.0 },
+    { "t": 960, "depth": 5.0,  "temp": 23.0 },
+    { "t": 1080, "depth": 0.0, "temp": 24.0 }
+  ]
+}

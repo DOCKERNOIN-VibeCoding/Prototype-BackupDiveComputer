@@ -1,0 +1,34 @@
+{
+  "name": "Safety Stop Skip Test",
+  "description": "Dive requiring safety stop, but diver surfaces before completing stop",
+  "loop": false,
+
+  "initial": {
+    "batteryPct": 94,
+    "gfLow": 40,
+    "gfHigh": 85,
+    "tempC": 24.0
+  },
+
+  "time": {
+    "startEpoch": 1735689600,
+    "tzOffsetMin": 540
+  },
+
+  "points": [
+    { "t": 0,   "depth": 0.0,  "temp": 24.0 },
+    { "t": 20,  "depth": 0.0,  "temp": 24.0 },
+
+    { "t": 120, "depth": 22.0, "temp": 23.0 },
+
+    { "t": 420, "depth": 22.0, "temp": 22.0 },
+
+    { "t": 540, "depth": 5.0,  "temp": 23.0 },
+
+    { "t": 560, "depth": 2.0,  "temp": 24.0 },
+
+    { "t": 600, "depth": 0.0,  "temp": 24.0 },
+
+    { "t": 800, "depth": 0.0,  "temp": 24.0 }
+  ]
+}
