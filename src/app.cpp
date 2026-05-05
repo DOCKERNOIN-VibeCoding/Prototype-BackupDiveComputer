@@ -4,6 +4,7 @@
 #include "ui.h"
 #include "mock_services.h"
 #include "generated_scenario.h"
+#include "log_storage.h"
 
 #include <math.h>
 
@@ -22,6 +23,7 @@ void DiveComputerApp::begin() {
 
     simSensor.begin();
     mockServices.begin();
+    logStorage.begin();
 
     deco_.init(SURFACE_PRESSURE_BAR);
     deco_.setGF(DEFAULT_GF_LOW, DEFAULT_GF_HIGH);
@@ -116,6 +118,29 @@ void DiveComputerApp::updateGFIfNeeded() {
 }
 
 void DiveComputerApp::applyScenarioPreload() {
+    // ------------------------------------------------------------
+    // v7.3:
+    // 실제 저장된 마지막 로그가 있으면 먼저 사용합니다.
+    // 저장된 로그가 없을 때만 기존 JSON scenario preload를 사용합니다.
+    // ------------------------------------------------------------
+    DiveLogHeader savedHeader;
+
+    if (logStorage.loadLastDive(savedHeader)) {
+        diveCount_ = savedHeader.diveNumber;
+
+        lastDiveStartEpochSec_ = savedHeader.startEpochSec;
+        lastDiveDurationSec_ = savedHeader.durationSec;
+        lastDiveEndEpochSec_ = savedHeader.endEpochSec;
+
+        lastDiveMaxDepthM_ = savedHeader.maxDepthCm / 100.0f;
+        lastDiveMinTempC_ = savedHeader.minTempDeciC / 10.0f;
+
+        noFlyEndEpochSec_ = savedHeader.noFlyEndEpochSec;
+
+        Serial.println("[LOG] Surface preload from saved compact log");
+        return;
+    }
+
     if (!SCENARIO_PRELOAD_ENABLED) {
         Serial.println("[SCENARIO] No preload log");
         return;
@@ -719,6 +744,45 @@ void DiveComputerApp::endDive() {
 
     uint32_t noFlyMinutes = calcNoFlyMinutes();
     noFlyEndEpochSec_ = lastDiveEndEpochSec_ + noFlyMinutes * 60UL;
+
+    // ------------------------------------------------------------
+    // v7.3:
+    // 다이빙 종료 시 compact log header 저장
+    // ------------------------------------------------------------
+    DiveLogHeader header = {};
+
+    header.magic = BDC_LOG_MAGIC;
+    header.version = BDC_LOG_VERSION;
+    header.headerSize = sizeof(DiveLogHeader);
+
+    header.diveNumber = diveCount_;
+    header.timeStatus = (uint8_t)LogTimeStatus::TimeSynced;
+    header.timeSessionId = 0;
+
+    header.startEpochSec = lastDiveStartEpochSec_;
+    header.endEpochSec = lastDiveEndEpochSec_;
+    header.durationSec = lastDiveDurationSec_;
+
+    header.noFlyEndEpochSec = noFlyEndEpochSec_;
+
+    header.maxDepthCm = (int16_t)(lastDiveMaxDepthM_ * 100.0f);
+    header.avgDepthCm = 0;
+    header.minTempDeciC = (int16_t)(lastDiveMinTempC_ * 10.0f);
+
+    header.sampleCount = dive_.sampleCount;
+    header.eventCount = 0;
+
+    if (mockServices.isGpsValid()) {
+        header.gpsValid = 1;
+        header.gpsLatE7 = 0;
+        header.gpsLonE7 = 0;
+    } else {
+        header.gpsValid = 0;
+        header.gpsLatE7 = 0;
+        header.gpsLonE7 = 0;
+    }
+
+    logStorage.saveLastDive(header);
 
 
     Serial.printf("[DIVE] end #%u duration=%lus max=%.1fm samples=%u\n",
