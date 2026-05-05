@@ -101,6 +101,7 @@ static void formatDateTimeFromEpoch(uint32_t epochSec,
                  tmv.tm_hour,
                  tmv.tm_min);
     }
+)
 
 static void formatDateOnlyFromEpoch(uint32_t epochSec,
                                     int16_t tzOffsetMin,
@@ -603,11 +604,12 @@ void uiDrawSurface(uint32_t currentEpochSec,
                    bool gpsValid,
                    bool charging,
                    bool chargeFull,
-                   uint32_t lastDiveEndEpochSec,
+                   uint32_t lastDiveStartEpochSec,
                    float lastMaxDepthM,
                    float lastMinTempC,
                    uint32_t surfaceIntervalSec,
                    uint32_t noFlyRemainSec) {
+
     u8g2.clearBuffer();
 
     drawTopBarSurface(currentEpochSec,
@@ -665,6 +667,7 @@ void uiDrawSurface(uint32_t currentEpochSec,
     // 우선 요청 형식을 유지하되, 오른쪽이 잘릴 수 있습니다.
     // ------------------------------------------------------------
     u8g2.drawStr(labelX, y1, "LAST");
+
 
     if (lastDiveStartEpochSec == 0) {
       u8g2.drawStr(valueX, y1, "--");

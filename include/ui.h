@@ -19,7 +19,7 @@ void uiDrawSurface(uint32_t currentEpochSec,
                    bool gpsValid,
                    bool charging,
                    bool chargeFull,
-                   uint32_t lastDiveStartEpochSec
+                   uint32_t lastDiveStartEpochSec,
                    float lastMaxDepthM,
                    float lastMinTempC,
                    uint32_t surfaceIntervalSec,

@@ -149,14 +149,27 @@ void DiveComputerApp::applyScenarioPreload() {
     if (SCENARIO_PRELOAD_SURFACE_INTERVAL_SEC > 0) {
         uint32_t nowEpoch = getCurrentEpochSec();
 
-        if (nowEpoch > SCENARIO_PRELOAD_SURFACE_INTERVAL_SEC) {
-            lastDiveEndEpochSec_ =
-                nowEpoch - SCENARIO_PRELOAD_SURFACE_INTERVAL_SEC;
-        } else {
-            lastDiveEndEpochSec_ = 0;
-        }
+        if (lastDiveEndEpochSec_ > 0 && nowEpoch > lastDiveEndEpochSec_) {
+            surfaceIntervalOffsetSec_ = nowEpoch - lastDiveEndEpochSec_;
+        } else if (SCENARIO_PRELOAD_SURFACE_INTERVAL_SEC > 0) {
+            surfaceIntervalOffsetSec_ = SCENARIO_PRELOAD_SURFACE_INTERVAL_SEC;
+            lastDiveEndEpochSec_ = nowEpoch - surfaceIntervalOffsetSec_;
+
+            if (lastDiveDurationSec_ > 0 && lastDiveEndEpochSec_ > lastDiveDurationSec_) {
+                lastDiveStartEpochSec_ = lastDiveEndEpochSec_ - lastDiveDurationSec_;
+            }
     } else {
-        lastDiveEndEpochSec_ = 0;
+        surfaceIntervalOffsetSec_ = 0;
+    }
+
+    if (noFlyEndEpochSec_ > nowEpoch) {
+        noFlyEndSimSec_ = noFlyEndEpochSec_ - SCENARIO_START_EPOCH;
+    } else if (SCENARIO_PRELOAD_NO_FLY_REMAIN_SEC > 0) {
+        noFlyEndEpochSec_ = nowEpoch + SCENARIO_PRELOAD_NO_FLY_REMAIN_SEC;
+        noFlyEndSimSec_ = getSimEpochSec() + SCENARIO_PRELOAD_NO_FLY_REMAIN_SEC;
+    } else {
+        noFlyEndEpochSec_ = 0;
+        noFlyEndSimSec_ = 0;
     }
 
     if (SCENARIO_PRELOAD_NO_FLY_REMAIN_SEC > 0) {

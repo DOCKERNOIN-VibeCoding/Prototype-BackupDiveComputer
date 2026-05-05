@@ -160,17 +160,6 @@ lines.append("// Preloaded virtual previous dive log state")
 lines.append("// ------------------------------------------------------------")
 lines.append(f"static constexpr bool SCENARIO_PRELOAD_ENABLED = {'true' if preload_enabled else 'false'};")
 lines.append(f"static constexpr uint16_t SCENARIO_PRELOAD_DIVE_COUNT = {preload_dive_count};")
-lines.append(f"static constexpr uint32_t SCENARIO_PRELOAD_LAST_DURATION_SEC = {preload_last_duration_sec}UL;")
-lines.append(f"static constexpr float SCENARIO_PRELOAD_LAST_MAX_DEPTH_M = {preload_last_max_depth_m:.2f}f;")
-lines.append(f"static constexpr float SCENARIO_PRELOAD_LAST_MIN_TEMP_C = {preload_last_min_temp_c:.2f}f;")
-lines.append(f"static constexpr uint32_t SCENARIO_PRELOAD_SURFACE_INTERVAL_SEC = {preload_surface_interval_sec}UL;")
-lines.append(f"static constexpr uint32_t SCENARIO_PRELOAD_NO_FLY_REMAIN_SEC = {preload_no_fly_remain_sec}UL;")
-lines.append(f"static constexpr bool SCENARIO_PRELOAD_GPS_VALID = {'true' if preload_gps_valid else 'false'};")
-lines.append(f"static constexpr float SCENARIO_PRELOAD_GPS_LAT = {preload_gps_lat:.7f}f;")
-lines.append(f"static constexpr float SCENARIO_PRELOAD_GPS_LON = {preload_gps_lon:.7f}f;")
-lines.append(f"static constexpr const char* SCENARIO_PRELOAD_GPS_PLACE = \"{c_string(preload_gps_place)}\";")
-lines.append("")
-lines.append("static const ScenarioPoint SCENARIO_POINTS[] = {")
 
 lines.append(f"static constexpr uint32_t SCENARIO_PRELOAD_LAST_START_EPOCH = {preload_last_start_epoch}UL;")
 lines.append(f"static constexpr uint32_t SCENARIO_PRELOAD_LAST_DURATION_SEC = {preload_last_duration_sec}UL;")
@@ -178,6 +167,17 @@ lines.append(f"static constexpr uint32_t SCENARIO_PRELOAD_LAST_END_EPOCH = {prel
 lines.append(f"static constexpr float SCENARIO_PRELOAD_LAST_MAX_DEPTH_M = {preload_last_max_depth_m:.2f}f;")
 lines.append(f"static constexpr float SCENARIO_PRELOAD_LAST_MIN_TEMP_C = {preload_last_min_temp_c:.2f}f;")
 lines.append(f"static constexpr uint32_t SCENARIO_PRELOAD_NO_FLY_END_EPOCH = {preload_no_fly_end_epoch}UL;")
+
+lines.append(f"static constexpr uint32_t SCENARIO_PRELOAD_SURFACE_INTERVAL_SEC = {preload_surface_interval_sec}UL;")
+lines.append(f"static constexpr uint32_t SCENARIO_PRELOAD_NO_FLY_REMAIN_SEC = {preload_no_fly_remain_sec}UL;")
+
+lines.append(f"static constexpr bool SCENARIO_PRELOAD_GPS_VALID = {'true' if preload_gps_valid else 'false'};")
+lines.append(f"static constexpr float SCENARIO_PRELOAD_GPS_LAT = {preload_gps_lat:.7f}f;")
+lines.append(f"static constexpr float SCENARIO_PRELOAD_GPS_LON = {preload_gps_lon:.7f}f;")
+lines.append(f"static constexpr const char* SCENARIO_PRELOAD_GPS_PLACE = \"{c_string(preload_gps_place)}\";")
+lines.append("")
+
+lines.append("static const ScenarioPoint SCENARIO_POINTS[] = {")
 
 
 for p in normalized_points:
