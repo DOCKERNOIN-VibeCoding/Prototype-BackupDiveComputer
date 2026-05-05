@@ -101,7 +101,7 @@ static void formatDateTimeFromEpoch(uint32_t epochSec,
                  tmv.tm_hour,
                  tmv.tm_min);
     }
-)
+}
 
 static void formatDateOnlyFromEpoch(uint32_t epochSec,
                                     int16_t tzOffsetMin,

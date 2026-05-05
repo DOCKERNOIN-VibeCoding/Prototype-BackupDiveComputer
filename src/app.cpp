@@ -121,6 +121,9 @@ void DiveComputerApp::applyScenarioPreload() {
         return;
     }
 
+    // ------------------------------------------------------------
+    // 1. Scenario에서 이전 다이빙 정보를 읽어옵니다.
+    // ------------------------------------------------------------
     diveCount_ = SCENARIO_PRELOAD_DIVE_COUNT;
 
     lastDiveStartEpochSec_ = SCENARIO_PRELOAD_LAST_START_EPOCH;
@@ -132,39 +135,47 @@ void DiveComputerApp::applyScenarioPreload() {
 
     noFlyEndEpochSec_ = SCENARIO_PRELOAD_NO_FLY_END_EPOCH;
 
-    surfaceIntervalOffsetSec_ = SCENARIO_PRELOAD_SURFACE_INTERVAL_SEC;
     surfaceIntervalStartMs_ = millis();
 
-    // ------------------------------------------------------------
-    // 마지막 출수 시각 계산
-    //
-    // 현재 시각에서 surface interval을 뺀 값을
-    // 마지막 다이빙 출수 시각으로 사용합니다.
-    //
-    // 예:
-    // 현재 시각 2025/01/01 09:00
-    // surfaceIntervalSec = 5040초 = 1시간 24분
-    // LAST DIVE = 2025/01/01 07:36
-    // ------------------------------------------------------------
-    if (SCENARIO_PRELOAD_SURFACE_INTERVAL_SEC > 0) {
-        uint32_t nowEpoch = getCurrentEpochSec();
+    // 현재 시뮬레이션상의 실제 epoch 시간입니다.
+    uint32_t nowEpoch = getCurrentEpochSec();
 
-        if (lastDiveEndEpochSec_ > 0 && nowEpoch > lastDiveEndEpochSec_) {
-            surfaceIntervalOffsetSec_ = nowEpoch - lastDiveEndEpochSec_;
-        } else if (SCENARIO_PRELOAD_SURFACE_INTERVAL_SEC > 0) {
-            surfaceIntervalOffsetSec_ = SCENARIO_PRELOAD_SURFACE_INTERVAL_SEC;
+    // ------------------------------------------------------------
+    // 2. Surface Interval 계산
+    //
+    // v7.2 원칙:
+    // surfaceIntervalSec를 미리 저장해서 쓰지 않고,
+    // 현재 시간 - 마지막 다이빙 종료 시간으로 계산합니다.
+    // ------------------------------------------------------------
+    if (lastDiveEndEpochSec_ > 0 && nowEpoch > lastDiveEndEpochSec_) {
+        surfaceIntervalOffsetSec_ = nowEpoch - lastDiveEndEpochSec_;
+    } else if (SCENARIO_PRELOAD_SURFACE_INTERVAL_SEC > 0) {
+        // 구형 JSON 시나리오 호환용 fallback입니다.
+        surfaceIntervalOffsetSec_ = SCENARIO_PRELOAD_SURFACE_INTERVAL_SEC;
+
+        if (nowEpoch > surfaceIntervalOffsetSec_) {
             lastDiveEndEpochSec_ = nowEpoch - surfaceIntervalOffsetSec_;
+        }
 
-            if (lastDiveDurationSec_ > 0 && lastDiveEndEpochSec_ > lastDiveDurationSec_) {
-                lastDiveStartEpochSec_ = lastDiveEndEpochSec_ - lastDiveDurationSec_;
-            }
+        if (lastDiveDurationSec_ > 0 &&
+            lastDiveEndEpochSec_ > lastDiveDurationSec_) {
+            lastDiveStartEpochSec_ = lastDiveEndEpochSec_ - lastDiveDurationSec_;
+        }
     } else {
         surfaceIntervalOffsetSec_ = 0;
     }
 
+    // ------------------------------------------------------------
+    // 3. No-Fly 계산
+    //
+    // v7.2 원칙:
+    // noFlyRemainSec를 미리 저장해서 쓰지 않고,
+    // noFlyEndEpoch - 현재 epoch로 남은 시간을 계산합니다.
+    // ------------------------------------------------------------
     if (noFlyEndEpochSec_ > nowEpoch) {
         noFlyEndSimSec_ = noFlyEndEpochSec_ - SCENARIO_START_EPOCH;
     } else if (SCENARIO_PRELOAD_NO_FLY_REMAIN_SEC > 0) {
+        // 구형 JSON 시나리오 호환용 fallback입니다.
         noFlyEndEpochSec_ = nowEpoch + SCENARIO_PRELOAD_NO_FLY_REMAIN_SEC;
         noFlyEndSimSec_ = getSimEpochSec() + SCENARIO_PRELOAD_NO_FLY_REMAIN_SEC;
     } else {
@@ -172,21 +183,18 @@ void DiveComputerApp::applyScenarioPreload() {
         noFlyEndSimSec_ = 0;
     }
 
-    if (SCENARIO_PRELOAD_NO_FLY_REMAIN_SEC > 0) {
-        noFlyEndSimSec_ =
-            getSimEpochSec() + SCENARIO_PRELOAD_NO_FLY_REMAIN_SEC;
-    } else {
-        noFlyEndSimSec_ = 0;
-    }
-
+    // ------------------------------------------------------------
+    // 4. Serial 출력
+    // ------------------------------------------------------------
     Serial.println("[SCENARIO] Preloaded previous dive log");
     Serial.printf("[SCENARIO] diveCount=%u\n", diveCount_);
+    Serial.printf("[SCENARIO] lastStartEpoch=%lu\n", lastDiveStartEpochSec_);
+    Serial.printf("[SCENARIO] lastEndEpoch=%lu\n", lastDiveEndEpochSec_);
     Serial.printf("[SCENARIO] lastDuration=%lus\n", lastDiveDurationSec_);
     Serial.printf("[SCENARIO] lastMax=%.1fm\n", lastDiveMaxDepthM_);
     Serial.printf("[SCENARIO] lastMinTemp=%.1fC\n", lastDiveMinTempC_);
     Serial.printf("[SCENARIO] surfaceInterval=%lus\n", surfaceIntervalOffsetSec_);
-    Serial.printf("[SCENARIO] noFlyRemain=%lus\n", SCENARIO_PRELOAD_NO_FLY_REMAIN_SEC);
-    Serial.printf("[SCENARIO] lastDiveEndEpoch=%lu\n", lastDiveEndEpochSec_);
+    Serial.printf("[SCENARIO] noFlyEndEpoch=%lu\n", noFlyEndEpochSec_);
 
     if (SCENARIO_PRELOAD_GPS_VALID) {
         Serial.printf("[SCENARIO] GPS %.7f, %.7f %s\n",

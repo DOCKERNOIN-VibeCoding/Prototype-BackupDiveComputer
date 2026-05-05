@@ -137,6 +137,8 @@ private:
     void beep(uint32_t freq, uint32_t durationMs);
 
     uint32_t getCurrentEpochSec() const;
+    uint32_t getSurfaceIntervalSec() const;
+    uint32_t getNoFlyRemainSec() const;
     void drawSurfaceInfoScreen();
 };
 
