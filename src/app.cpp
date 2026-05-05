@@ -123,11 +123,14 @@ void DiveComputerApp::applyScenarioPreload() {
 
     diveCount_ = SCENARIO_PRELOAD_DIVE_COUNT;
 
+    lastDiveStartEpochSec_ = SCENARIO_PRELOAD_LAST_START_EPOCH;
     lastDiveDurationSec_ = SCENARIO_PRELOAD_LAST_DURATION_SEC;
+    lastDiveEndEpochSec_ = SCENARIO_PRELOAD_LAST_END_EPOCH;
+
     lastDiveMaxDepthM_ = SCENARIO_PRELOAD_LAST_MAX_DEPTH_M;
     lastDiveMinTempC_ = SCENARIO_PRELOAD_LAST_MIN_TEMP_C;
 
-    dive_.minTempC = SCENARIO_PRELOAD_LAST_MIN_TEMP_C;
+    noFlyEndEpochSec_ = SCENARIO_PRELOAD_NO_FLY_END_EPOCH;
 
     surfaceIntervalOffsetSec_ = SCENARIO_PRELOAD_SURFACE_INTERVAL_SEC;
     surfaceIntervalStartMs_ = millis();
@@ -238,6 +241,8 @@ void DiveComputerApp::startDive() {
 
     dive_.phase = DivePhase::Normal;
     dive_.diveStartMs = millis();
+    currentDiveStartEpochSec_ = getCurrentEpochSec();
+
     dive_.lastDepthMs = millis();
     dive_.lastDecoUpdateMs = millis();
     dive_.lastLogMs = millis();
@@ -684,13 +689,16 @@ void DiveComputerApp::endDive() {
         durationSec = (now - dive_.diveStartMs) / 1000UL;
     }
 
+    lastDiveStartEpochSec_ = currentDiveStartEpochSec_;
     lastDiveDurationSec_ = durationSec;
-    lastDiveMaxDepthM_ = dive_.maxDepthM;
-    lastDiveMinTempC_ = dive_.minTempC;
     lastDiveEndEpochSec_ = getCurrentEpochSec();
 
+    lastDiveMaxDepthM_ = dive_.maxDepthM;
+    lastDiveMinTempC_ = dive_.minTempC;
+
     uint32_t noFlyMinutes = calcNoFlyMinutes();
-    noFlyEndSimSec_ = getSimEpochSec() + noFlyMinutes * 60UL;
+    noFlyEndEpochSec_ = lastDiveEndEpochSec_ + noFlyMinutes * 60UL;
+
 
     Serial.printf("[DIVE] end #%u duration=%lus max=%.1fm samples=%u\n",
                   diveCount_,
@@ -895,26 +903,43 @@ void DiveComputerApp::drawSurfaceInfoScreen() {
     uint32_t now = millis();
 
     bool noFlyActive = noFlyEndSimSec_ > getSimEpochSec();
-    uint32_t noFlyRemainSec =
-        noFlyActive ? noFlyEndSimSec_ - getSimEpochSec() : 0;
-
-    uint32_t surfaceIntervalSec =
-        surfaceIntervalOffsetSec_ +
-        (now - surfaceIntervalStartMs_) / 1000UL;
+    uint32_t surfaceIntervalSec = getSurfaceIntervalSec();
+    uint32_t noFlyRemainSec = getNoFlyRemainSec();
 
     uint8_t batteryPct = mockServices.getBatteryPct();
     bool charging = mockServices.isCharging();
     bool chargeFull = charging && batteryPct >= BATTERY_FULL_THRESHOLD_PCT;
 
     uiDrawSurface(getCurrentEpochSec(),
-                  SCENARIO_TZ_OFFSET_MIN,
-                  batteryPct,
-                  mockServices.isGpsValid(),
-                  charging,
-                  chargeFull,
-                  lastDiveEndEpochSec_,
-                  lastDiveMaxDepthM_,
-                  lastDiveMinTempC_,
-                  surfaceIntervalSec,
-                  noFlyRemainSec);
+                SCENARIO_TZ_OFFSET_MIN,
+                batteryPct,
+                mockServices.isGpsValid(),
+                charging,
+                chargeFull,
+                lastDiveStartEpochSec_,
+                lastDiveMaxDepthM_,
+                lastDiveMinTempC_,
+                surfaceIntervalSec,
+                noFlyRemainSec);
+
+}
+
+uint32_t DiveComputerApp::getSurfaceIntervalSec() const {
+    uint32_t nowEpoch = getCurrentEpochSec();
+
+    if (lastDiveEndEpochSec_ == 0 || nowEpoch <= lastDiveEndEpochSec_) {
+        return 0;
+    }
+
+    return nowEpoch - lastDiveEndEpochSec_;
+}
+
+uint32_t DiveComputerApp::getNoFlyRemainSec() const {
+    uint32_t nowEpoch = getCurrentEpochSec();
+
+    if (noFlyEndEpochSec_ == 0 || nowEpoch >= noFlyEndEpochSec_) {
+        return 0;
+    }
+
+    return noFlyEndEpochSec_ - nowEpoch;
 }

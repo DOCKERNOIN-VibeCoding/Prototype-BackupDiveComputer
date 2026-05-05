@@ -101,7 +101,40 @@ static void formatDateTimeFromEpoch(uint32_t epochSec,
                  tmv.tm_hour,
                  tmv.tm_min);
     }
+
+static void formatDateOnlyFromEpoch(uint32_t epochSec,
+                                    int16_t tzOffsetMin,
+                                    char* buf,
+                                    size_t len) {
+    if (epochSec == 0) {
+        snprintf(buf, len, "--");
+        return;
+    }
+
+    time_t localTime = (time_t)epochSec + (time_t)tzOffsetMin * 60;
+    struct tm tmv;
+
+#if defined(ESP32)
+    gmtime_r(&localTime, &tmv);
+#else
+    struct tm* p = gmtime(&localTime);
+
+    if (p) {
+        tmv = *p;
+    } else {
+        snprintf(buf, len, "--");
+        return;
+    }
+#endif
+
+    snprintf(buf,
+             len,
+             "%04d-%02d-%02d",
+             tmv.tm_year + 1900,
+             tmv.tm_mon + 1,
+             tmv.tm_mday);
 }
+
 
 
 static void formatSurfaceDuration(uint32_t sec, char* buf, size_t len) {
@@ -589,11 +622,11 @@ void uiDrawSurface(uint32_t currentEpochSec,
     char noFlyText[24];
     char value[24];
 
-    formatDateTimeFromEpoch(lastDiveEndEpochSec,
+    formatDateOnlyFromEpoch(lastDiveStartEpochSec,
                             tzOffsetMin,
                             lastDiveText,
-                            sizeof(lastDiveText),
-                            false);
+                            sizeof(lastDiveText));
+
 
     formatSurfaceDuration(surfaceIntervalSec,
                           surfaceText,
@@ -631,18 +664,19 @@ void uiDrawSurface(uint32_t currentEpochSec,
     // 표시 공간이 부족하면 "--" 또는 짧은 시간만 표시하는 방식이 필요합니다.
     // 우선 요청 형식을 유지하되, 오른쪽이 잘릴 수 있습니다.
     // ------------------------------------------------------------
-    u8g2.drawStr(labelX, y1, "LAST DIVE");
+    u8g2.drawStr(labelX, y1, "LAST");
 
-    if (lastDiveEndEpochSec == 0) {
-        u8g2.drawStr(valueX, y1, "--");
-    } else {
-        u8g2.drawStr(valueX, y1, lastDiveText);
+    if (lastDiveStartEpochSec == 0) {
+      u8g2.drawStr(valueX, y1, "--");
+    } else {    
+       u8g2.drawStr(valueX, y1, lastDiveText);
     }
+
 
     // ------------------------------------------------------------
     // 2. LAST MAX
     // ------------------------------------------------------------
-    u8g2.drawStr(labelX, y2, "LAST MAX");
+    u8g2.drawStr(labelX, y2, "MAX");
 
     snprintf(value, sizeof(value), "%.1fm", lastMaxDepthM);
     u8g2.drawStr(valueX, y2, value);
@@ -650,7 +684,7 @@ void uiDrawSurface(uint32_t currentEpochSec,
     // ------------------------------------------------------------
     // 3. LAST TMP
     // ------------------------------------------------------------
-    u8g2.drawStr(labelX, y3, "LAST TMP");
+    u8g2.drawStr(labelX, y3, "TMP");
 
     if (lastMinTempC <= 0.0f) {
         snprintf(value, sizeof(value), "--C");

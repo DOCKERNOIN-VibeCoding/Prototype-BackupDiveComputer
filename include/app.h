@@ -88,12 +88,13 @@ private:
     uint32_t lastUiMs_ = 0;
 
     uint32_t surfaceIntervalStartMs_ = 0;
-
     // Used for scenario preload.
     // Example: previous dive ended 84 minutes before simulation start.
     uint32_t surfaceIntervalOffsetSec_ = 0;
 
     uint8_t diveDetectCount_ = 0;
+
+    uint32_t currentDiveStartEpochSec_ = 0;
 
     // Battery low popup state
     uint32_t lastBatteryLowPopupMs_ = 0;
@@ -101,8 +102,12 @@ private:
 
     float lastDiveMaxDepthM_ = 0.0f;
     float lastDiveMinTempC_ = 0.0f;
+    uint32_t lastDiveStartEpochSec_ = 0;
     uint32_t lastDiveDurationSec_ = 0;
     uint32_t lastDiveEndEpochSec_ = 0;
+    uint32_t noFlyEndEpochSec_ = 0;
+
+
 
 private:
     void setState(SystemState newState);

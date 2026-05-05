@@ -88,8 +88,37 @@ preload_last_duration_sec = int(last_dive.get("durationSec", 0))
 preload_last_max_depth_m = float(last_dive.get("maxDepthM", 0.0))
 preload_last_min_temp_c = float(last_dive.get("minTempC", initial_temp))
 
+preload_last_start_epoch = int(last_dive.get("startEpoch", 0))
+preload_last_duration_sec = int(last_dive.get("durationSec", 0))
+preload_last_max_depth_m = float(last_dive.get("maxDepthM", 0.0))
+preload_last_min_temp_c = float(last_dive.get("minTempC", initial_temp))
+preload_last_no_fly_minutes_at_end = int(last_dive.get("noFlyMinutesAtEnd", 0))
+
+# Backward compatibility for old scenario format
 preload_surface_interval_sec = int(preload.get("surfaceIntervalSec", 0))
 preload_no_fly_remain_sec = int(preload.get("noFlyRemainSec", 0))
+
+if preload_last_start_epoch > 0 and preload_last_duration_sec > 0:
+    preload_last_end_epoch = preload_last_start_epoch + preload_last_duration_sec
+else:
+    # Old format fallback:
+    # current scenario start epoch - surface interval = last dive end epoch
+    if preload_surface_interval_sec > 0 and preload_last_duration_sec > 0:
+        preload_last_end_epoch = start_epoch - preload_surface_interval_sec
+        preload_last_start_epoch = preload_last_end_epoch - preload_last_duration_sec
+    else:
+        preload_last_end_epoch = 0
+        preload_last_start_epoch = 0
+
+if preload_last_no_fly_minutes_at_end > 0 and preload_last_end_epoch > 0:
+    preload_no_fly_end_epoch = preload_last_end_epoch + preload_last_no_fly_minutes_at_end * 60
+else:
+    # Old format fallback:
+    # current scenario start epoch + no-fly remain
+    if preload_no_fly_remain_sec > 0:
+        preload_no_fly_end_epoch = start_epoch + preload_no_fly_remain_sec
+    else:
+        preload_no_fly_end_epoch = 0
 
 gps = preload.get("gps", {})
 preload_gps_valid = bool(gps.get("valid", False))
@@ -142,6 +171,15 @@ lines.append(f"static constexpr float SCENARIO_PRELOAD_GPS_LON = {preload_gps_lo
 lines.append(f"static constexpr const char* SCENARIO_PRELOAD_GPS_PLACE = \"{c_string(preload_gps_place)}\";")
 lines.append("")
 lines.append("static const ScenarioPoint SCENARIO_POINTS[] = {")
+
+lines.append(f"static constexpr uint32_t SCENARIO_PRELOAD_LAST_START_EPOCH = {preload_last_start_epoch}UL;")
+lines.append(f"static constexpr uint32_t SCENARIO_PRELOAD_LAST_DURATION_SEC = {preload_last_duration_sec}UL;")
+lines.append(f"static constexpr uint32_t SCENARIO_PRELOAD_LAST_END_EPOCH = {preload_last_end_epoch}UL;")
+lines.append(f"static constexpr float SCENARIO_PRELOAD_LAST_MAX_DEPTH_M = {preload_last_max_depth_m:.2f}f;")
+lines.append(f"static constexpr float SCENARIO_PRELOAD_LAST_MIN_TEMP_C = {preload_last_min_temp_c:.2f}f;")
+lines.append(f"static constexpr uint32_t SCENARIO_PRELOAD_NO_FLY_END_EPOCH = {preload_no_fly_end_epoch}UL;")
+
+
 for p in normalized_points:
     lines.append(
         f"  {{ {p['t_ms']}UL, {p['depth']:.2f}f, {p['temp']:.2f}f }},"

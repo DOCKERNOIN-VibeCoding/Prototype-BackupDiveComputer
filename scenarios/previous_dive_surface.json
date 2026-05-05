@@ -12,27 +12,27 @@
     "tzOffsetMin": 540
   },
 
-  "preload": {
-    "enabled": true,
+"preload": {
+  "enabled": true,
 
-    "diveCount": 3,
+  "diveCount": 3,
 
-    "lastDive": {
-      "durationSec": 2460,
-      "maxDepthM": 28.6,
-      "minTempC": 22.0
-    },
-
-    "surfaceIntervalSec": 5040,
-    "noFlyRemainSec": 41520,
-
-    "gps": {
-      "valid": true,
-      "lat": 33.4996,
-      "lon": 126.5312,
-      "place": "Jeju"
-    }
+  "lastDive": {
+    "startEpoch": 1735682100,
+    "durationSec": 2460,
+    "maxDepthM": 28.6,
+    "minTempC": 22.0,
+    "noFlyMinutesAtEnd": 776
   },
+
+  "gps": {
+    "valid": true,
+    "lat": 33.4996,
+    "lon": 126.5312,
+    "place": "Jeju Test Site"
+  }
+}
+
 
   "points": [
     { "t": 0,   "depth": 0.0,  "temp": 24.0 },
