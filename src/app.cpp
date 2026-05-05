@@ -805,9 +805,7 @@ void DiveComputerApp::handlePostDive() {
     if (now - lastUiMs_ >= UI_UPDATE_INTERVAL_MS) {
         lastUiMs_ = now;
 
-        bool noFlyActive = noFlyEndSimSec_ > getSimEpochSec();
-        uint32_t remain =
-            noFlyActive ? noFlyEndSimSec_ - getSimEpochSec() : 0;
+        uint32_t remain = getNoFlyRemainSec();
 
         uiDrawPostDive(diveCount_,
                        lastDiveDurationSec_,
@@ -921,9 +919,6 @@ void DiveComputerApp::beep(uint32_t freq, uint32_t durationMs) {
 }
 
 void DiveComputerApp::drawSurfaceInfoScreen() {
-    uint32_t now = millis();
-
-    bool noFlyActive = noFlyEndSimSec_ > getSimEpochSec();
     uint32_t surfaceIntervalSec = getSurfaceIntervalSec();
     uint32_t noFlyRemainSec = getNoFlyRemainSec();
 

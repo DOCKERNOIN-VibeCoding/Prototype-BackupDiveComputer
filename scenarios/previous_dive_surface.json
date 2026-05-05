@@ -12,7 +12,7 @@
     "tzOffsetMin": 540
   },
 
-"preload": {
+  "preload": {
   "enabled": true,
 
   "diveCount": 3,
