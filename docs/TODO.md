@@ -1,5 +1,5 @@
 
-# TODO - BackupDiveComputer_v7.2
+# TODO - BackupDiveComputer_v1.2
 
 ---
 이 문서는 앞으로 해야 할 일을 체크리스트 형태로 정리한다.
@@ -8,17 +8,17 @@
 ## 1. 현재 문서 정리
 
 - [x] CHANGELOG.md 업데이트
-- [x] CHAT_CONTEXT_v7.2.md 업데이트
-- [x] DEVELOPMENT_v7.2.md 업데이트
+- [x] CHAT_CONTEXT_v1.2.md 업데이트
+- [x] DEVELOPMENT_v1.2.md 업데이트
 - [x] TODO.md 업데이트
 - [ ] 문서 변경사항 Git commit
 - [ ] 문서 변경사항 GitHub push
 
 ---
 
-## 2. 현재 v7.2 코드 안정화
+## 2. 현재 v1.2 코드 안정화
 
-- [x] dev/v7.2 브랜치 생성 및 사용
+- [x] dev/v1.2 브랜치 생성 및 사용
 - [x] epoch 기반 previous dive preload 반영
 - [x] `lastDiveStartEpochSec_` 구조 반영
 - [x] `lastDiveDurationSec_` 구조 반영
@@ -213,11 +213,11 @@
 - [ ] 임시 빌드 로그 파일이 Git에 들어가지 않는지 확인
 - [ ] `git status`로 M 표시 확인
 - [ ] commit 후 M 표시 사라지는지 확인
-- [ ] push 후 GitHub dev/v7.2 확인
+- [ ] push 후 GitHub dev/v1.2 확인
 
 ---
 
-## 15. 최종 v7.2 완료 조건
+## 15. 최종 v1.2 완료 조건
 
 - [ ] `pio run -e wokwi` 성공
 - [ ] Wokwi 시뮬레이션 실행 성공
@@ -229,4 +229,4 @@
 - [ ] Battery Low 팝업 정상
 - [ ] Charging UI 정상
 - [ ] 문서 4개 최신화
-- [ ] GitHub dev/v7.2에 최종 push
+- [ ] GitHub dev/v1.2에 최종 push

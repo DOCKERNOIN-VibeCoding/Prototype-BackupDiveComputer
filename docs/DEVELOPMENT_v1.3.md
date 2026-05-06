@@ -1,7 +1,7 @@
-# BackupDiveComputer_v7.2 개발 정의서
+# BackupDiveComputer_v1.2 개발 정의서
 
 ---
-이 문서는 BackupDiveComputer_v7.2의 개발 방향, 현재 구현 상태, 앞으로 구현할 내용을 정리한 문서이다.
+이 문서는 BackupDiveComputer_v1.2의 개발 방향, 현재 구현 상태, 앞으로 구현할 내용을 정리한 문서이다.
 
 코딩 경험이 없는 초심자도 이해할 수 있도록 가능한 한 쉬운 표현을 사용한다.
 ---
@@ -18,7 +18,7 @@ BackupDiveComputer
 ## 1.2 현재 개발 브랜치
 
 ```text
-dev/v7.2
+dev/v1.2
 ```
 
 ## 1.3 프로젝트 목표
@@ -160,7 +160,7 @@ Subsurface XML도 dive date/time을 다이빙 시작 시각으로 기록한다.
 
 ---
 
-# 5. v7.2의 가장 중요한 변경점
+# 5. v1.2의 가장 중요한 변경점
 
 ## 5.1 기존 방식의 문제
 
@@ -181,7 +181,7 @@ Subsurface XML도 dive date/time을 다이빙 시작 시각으로 기록한다.
 
 ## 5.2 새로운 방식
 
-v7.2에서는 실제 제품 방식에 맞게 epoch 기반으로 계산한다.
+v1.2에서는 실제 제품 방식에 맞게 epoch 기반으로 계산한다.
 
 저장하는 값:
 
@@ -881,19 +881,19 @@ git status
 수정된 파일 확인 후:
 
 ```bash
-git add docs/CHANGELOG.md docs/CHAT_CONTEXT_v7.2.md docs/DEVELOPMENT_v7.2.md docs/TODO.md
+git add docs/CHANGELOG.md docs/CHAT_CONTEXT_v1.2.md docs/DEVELOPMENT_v1.2.md docs/TODO.md
 ```
 
 커밋:
 
 ```bash
-git commit -m "Update v7.2 development documents"
+git commit -m "Update v1.2 development documents"
 ```
 
 푸시:
 
 ```bash
-git push origin dev/v7.2
+git push origin dev/v1.2
 ```
 
 ---
@@ -938,9 +938,9 @@ Light Sleep 전력 측정
 
 ---
 
-# 21. v7.2 완료 기준
+# 21. v1.2 완료 기준
 
-v7.2 1차 완료 기준:
+v1.2 1차 완료 기준:
 
 ```text
 Wokwi 빌드 성공
@@ -958,7 +958,7 @@ JSON preload 정상
 generated_scenario.h 자동 생성 정상
 ```
 
-v7.2 확장 완료 기준:
+v1.2 확장 완료 기준:
 
 ```text
 Compact log format 초안 추가
@@ -973,7 +973,7 @@ timeSessionId 설계 반영
 
 # 22. 최종 방향 요약
 
-BackupDiveComputer_v7.2는 단순히 화면을 바꾸는 버전이 아니다.
+BackupDiveComputer_v1.2는 단순히 화면을 바꾸는 버전이 아니다.
 
 핵심은 다음이다.
 

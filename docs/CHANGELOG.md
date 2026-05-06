@@ -4,28 +4,28 @@
 본 문서는 BackupDiveComputer 프로젝트의 주요 변경 사항을 기록한다.
 ---
 
-## dev/v7.2 - Current
+## dev/v1.2 - Current
 
 ### 2026-05-05
 
 현재 개발 브랜치:
 
 ```text
-dev/v7.2
+dev/v1.2
 ```
 
 최근 확인된 주요 커밋:
 
 ```text
-a6d4a87 Clean up v7.2 scenario files
-138c1b1 Fix remaining v7.2 preload compile issues
-5ab55c1 Fix v7.2 epoch preload build errors
+a6d4a87 Clean up v1.2 scenario files
+138c1b1 Fix remaining v1.2 preload compile issues
+5ab55c1 Fix v1.2 epoch preload build errors
 2f6216e Refactor surface preload to epoch-based previous dive model
 ```
 
 ---
 
-## v7.2 주요 변경 사항
+## v1.2 주요 변경 사항
 
 ### 1. Surface 화면 데이터 모델 변경
 
@@ -38,7 +38,7 @@ surfaceIntervalSec
 noFlyRemainSec
 ```
 
-v7.2에서는 실제 다이브컴퓨터 동작에 맞게 epoch 기반 구조로 변경했다.
+v1.2에서는 실제 다이브컴퓨터 동작에 맞게 epoch 기반 구조로 변경했다.
 
 새 개념:
 
@@ -222,9 +222,9 @@ exports/
 
 ---
 
-## v7.1 Baseline
+## v1.1 Baseline
 
-v7.1은 v7.2 리팩토링 전 기준 버전이다.
+v1.1은 v1.2 리팩토링 전 기준 버전이다.
 
 포함 기능:
 
@@ -242,9 +242,9 @@ Ascent-rate graph with fixed risk-zone dot pattern
 
 ---
 
-## v7.2 이후 계획
+## v1.2 이후 계획
 
-다음 기능은 v7.2 이후 계속 개발한다.
+다음 기능은 v1.2 이후 계속 개발한다.
 
 ```text
 Compact internal dive log format
@@ -257,3 +257,30 @@ GPS/BLE/display low-power control
 Time sync failure handling
 timeSessionId based log correction
 ```
+
+## v1.3 - Current
+
+### Version renaming policy
+
+기존 개발 중 v7.x 형태로 사용하던 버전명을 v1.x 체계로 재정리한다.
+
+정리 기준:
+
+```text
+old v7.1-baseline → v1.0-baseline
+old dev/v7.2      → dev/v1.2
+old dev/v7.3      → dev/v1.3
+```
+
+# 기존 v7.x 브랜치 삭제는 나중에
+
+새 브랜치가 잘 만들어지고, 빌드가 되는지 확인한 다음에만 삭제하세요.
+
+삭제는 선택입니다.
+
+## 원격 브랜치 삭제
+
+```bash
+git push origin --delete dev/v7.3
+```
+

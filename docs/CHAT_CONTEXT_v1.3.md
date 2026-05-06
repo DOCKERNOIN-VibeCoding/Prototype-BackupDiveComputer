@@ -1,4 +1,4 @@
-# Chat Context - BackupDiveComputer_v7.2
+# Chat Context - BackupDiveComputer_v1.2
 ---
 이 문서는 새 대화에서 개발 내용을 빠르게 이어가기 위한 요약 문서이다.
 ---
@@ -11,17 +11,17 @@ Repository:
 https://github.com/DOCKERNOIN-VibeCoding/Prototype-BackupDiveComputer
 
 Branch:
-dev/v7.2
+dev/v1.2
 
 Target:
-BackupDiveComputer_v7.2
+BackupDiveComputer_v1.2
 ```
 
 ---
 
 ## 현재 개발 목표
 
-BackupDiveComputer_v7.2의 핵심 목표는 다음과 같다.
+BackupDiveComputer_v1.2의 핵심 목표는 다음과 같다.
 
 ```text
 1. Surface 화면을 실제 다이브 로그 기반 구조로 변경
@@ -59,7 +59,7 @@ YYYY-MM-DD
 
 ## epoch 기반 Surface 계산
 
-v7.2에서는 surface interval을 시나리오에서 직접 넣지 않는다.
+v1.2에서는 surface interval을 시나리오에서 직접 넣지 않는다.
 
 대신 다음 값으로 계산한다.
 
@@ -372,9 +372,9 @@ PowerShell에서 pio 명령을 못 찾는 경우:
 
 ```bash
 git status
-git add docs/CHANGELOG.md docs/CHAT_CONTEXT_v7.2.md docs/DEVELOPMENT_v7.2.md docs/TODO.md
-git commit -m "Update v7.2 development documents"
-git push origin dev/v7.2
+git add docs/CHANGELOG.md docs/CHAT_CONTEXT_v1.2.md docs/DEVELOPMENT_v1.2.md docs/TODO.md
+git commit -m "Update v1.2 development documents"
+git push origin dev/v1.2
 ```
 
 ---
@@ -382,7 +382,7 @@ git push origin dev/v7.2
 ## 현재까지 중요한 결론
 
 ```text
-v7.2는 단순 UI 수정이 아니라,
+v1.2는 단순 UI 수정이 아니라,
 시뮬레이션 데이터 구조와 실제 제품 로그 구조를 맞추는 단계이다.
 
 Surface 화면은 이전 다이브 로그를 기반으로 표시해야 한다.

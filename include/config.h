@@ -8,7 +8,7 @@
 // ============================================================
 
 #define FW_NAME     "BackupDiveComputer"
-#define FW_VERSION  "v7.0-clean"
+#define FW_VERSION  "v1.3-dev"
 
 // ============================================================
 // Pins
