@@ -1,5 +1,7 @@
 #include "mock_services.h"
 #include "config.h"
+#include "log_storage.h"
+
 
 MockServices mockServices;
 
@@ -53,6 +55,8 @@ void MockServices::printHelp() {
     Serial.println("gps ok");
     Serial.println("gps fail");
     Serial.println("battery 75");
+    Serial.println("log info");
+    Serial.println("log clear");
     Serial.println("==================================");
     Serial.println();
 }
@@ -165,6 +169,22 @@ void MockServices::handleCommand(String cmd, SimSensor& sensor) {
         Serial.printf("[MOCK_PWR] battery %u%%\n", batteryPct_);
         return;
     }
+
+        if (cmd == "log info") {
+        DiveLogHeader header;
+
+        if (!logStorage.loadLastDive(header)) {
+            Serial.println("[LOG] no readable last dive log");
+        }
+
+        return;
+    }
+
+    if (cmd == "log clear") {
+        logStorage.clearLastDive();
+        return;
+    }
+
 
     Serial.println("[CMD] Unknown command. Type help.");
 }

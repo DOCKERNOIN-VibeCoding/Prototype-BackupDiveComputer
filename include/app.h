@@ -55,6 +55,8 @@ struct DiveRuntime {
     bool safetySkipped = false;
     bool safetyPaused = false;
 
+    uint32_t safetySkippedAtMs = 0;
+
     uint32_t safetyElapsedMs = 0;
     uint32_t safetyPauseStartMs = 0;
     uint32_t lastSafetyTickMs = 0;

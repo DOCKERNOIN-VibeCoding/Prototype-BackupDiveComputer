@@ -376,22 +376,61 @@ void DiveComputerApp::handleDive() {
     dive_.ndlMin = deco_.calculateNDL(ambientBar);
     dive_.ceilingDepthM = deco_.getCurrentCeilingDepthM();
 
-    // ------------------------------------------------------------
-    // Surface detection during dive
-    // ------------------------------------------------------------
-    if (dive_.depthM < DIVE_END_DEPTH_M) {
-        if (dive_.surfaceStartMs == 0) {
-            dive_.surfaceStartMs = now;
-            Serial.println("[DIVE] surface detection started");
-        }
+// ------------------------------------------------------------
+// Surface detection during dive
+// ------------------------------------------------------------
+//
+// v1.3 safety stop skip policy:
+//
+// 안전정지가 필요한 상태에서 출수한 경우,
+// 곧바로 endDive() 하지 않습니다.
+//
+// 흐름:
+//   S.STOP PAUSED
+//     ↓
+//   일정 시간 동안 안전정지 수심으로 복귀하지 않음
+//     ↓
+//   S.STOP SKIPPED
+//     ↓
+//   30초 표시
+//     ↓
+//   endDive()
+//
+// ------------------------------------------------------------
+bool unresolvedSafetyStop =
+    dive_.safetyTriggered &&
+    !dive_.safetyCompleted &&
+    !dive_.safetySkipped;
 
-        if ((now - dive_.surfaceStartMs) / 1000UL >= DIVE_END_SURFACE_SEC) {
+bool skippedDisplayActive =
+    dive_.safetySkipped &&
+    dive_.safetySkippedAtMs > 0 &&
+    (now - dive_.safetySkippedAtMs <
+        SAFETY_STOP_SKIPPED_DISPLAY_SEC * 1000UL);
+
+if (dive_.depthM < DIVE_END_DEPTH_M) {
+    if (dive_.surfaceStartMs == 0) {
+        dive_.surfaceStartMs = now;
+        Serial.println("[DIVE] surface detection started");
+    }
+
+    if ((now - dive_.surfaceStartMs) / 1000UL >= DIVE_END_SURFACE_SEC) {
+        if (unresolvedSafetyStop) {
+            // 안전정지가 아직 완료/스킵 처리되지 않았으므로
+            // 다이빙 종료를 보류합니다.
+            // 아래 SafetyStop 로직에서 SKIPPED 판정을 하게 둡니다.
+        } else if (skippedDisplayActive) {
+            // S.STOP SKIPPED 표시 시간이 아직 남았으므로
+            // 다이빙 종료를 조금 더 기다립니다.
+        } else {
             endDive();
             return;
         }
-    } else {
-        dive_.surfaceStartMs = 0;
     }
+} else {
+    dive_.surfaceStartMs = 0;
+}
+
 
     // ------------------------------------------------------------
     // Fast ascent alarm
@@ -452,7 +491,6 @@ void DiveComputerApp::handleDive() {
                 dive_.depthM <= SAFETY_STOP_MAX_DEPTH_M;
 
             bool shallowOut =
-                dive_.depthM > 0.0f &&
                 dive_.depthM < SAFETY_STOP_MIN_DEPTH_M;
 
             bool deepOut =
@@ -506,6 +544,7 @@ void DiveComputerApp::handleDive() {
                     if ((now - dive_.safetyShallowStartMs) / 1000UL >= SAFETY_STOP_REEVAL_SEC) {
                         dive_.safetySkipped = true;
                         dive_.safetyPaused = false;
+                        dive_.safetySkippedAtMs = now;
                         dive_.phase = DivePhase::Normal;
 
                         Serial.println("[DIVE] Safety stop SKIPPED: shallow for 30s");
@@ -979,8 +1018,15 @@ bool DiveComputerApp::isBatteryLowPopupActive() const {
 }
 
 void DiveComputerApp::beep(uint32_t freq, uint32_t durationMs) {
+#ifdef WOKWI_SIMULATION
+    (void)freq;
+    (void)durationMs;
+    return;
+#else
     tone(PIN_BUZZER, freq, durationMs);
+#endif
 }
+
 
 void DiveComputerApp::drawSurfaceInfoScreen() {
     uint32_t surfaceIntervalSec = getSurfaceIntervalSec();

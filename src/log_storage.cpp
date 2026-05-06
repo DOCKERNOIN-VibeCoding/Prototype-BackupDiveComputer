@@ -9,13 +9,17 @@ LogStorage logStorage;
 static const char* LAST_DIVE_LOG_PATH = "/last_dive.bdc";
 
 bool LogStorage::begin() {
-    // LittleFS는 ESP32 내부 flash에 파일처럼 저장할 수 있게 해주는 기능입니다.
-    //
-    // true:
-    //   파일시스템이 없으면 포맷을 시도합니다.
-    //
-    // 시뮬레이션이나 초기 개발에서는 실패할 수도 있으므로,
-    // 실패해도 프로그램이 멈추지는 않게 합니다.
+#ifdef WOKWI_SIMULATION
+    // Wokwi에서는 ESP32 partition table / LittleFS가 안정적으로 적용되지 않을 수 있습니다.
+    // 그래서 시뮬레이션에서는 LittleFS를 시도하지 않고 RAM 임시 저장소를 사용합니다.
+    ready_ = true;
+    ramFallback_ = true;
+    ramHasLastDive_ = false;
+
+    Serial.println("[LOG] Wokwi RAM fallback enabled");
+    return true;
+#else
+    // 실제 ESP32 하드웨어에서는 LittleFS를 사용합니다.
     if (!LittleFS.begin(true)) {
         Serial.println("[LOG] LittleFS mount failed");
         ready_ = false;
@@ -25,13 +29,27 @@ bool LogStorage::begin() {
     ready_ = true;
     Serial.println("[LOG] LittleFS ready");
     return true;
+#endif
 }
+
 
 bool LogStorage::saveLastDive(const DiveLogHeader& header) {
     if (!ready_) {
         Serial.println("[LOG] save failed: storage not ready");
         return false;
     }
+
+#ifdef WOKWI_SIMULATION
+    if (ramFallback_) {
+        ramLastDive_ = header;
+        ramHasLastDive_ = true;
+
+        Serial.println("[LOG] last dive saved to RAM fallback");
+        printHeader(header);
+        return true;
+    }
+#endif
+
 
     File file = LittleFS.open(LAST_DIVE_LOG_PATH, "w");
 
@@ -59,6 +77,21 @@ bool LogStorage::loadLastDive(DiveLogHeader& header) {
         Serial.println("[LOG] load failed: storage not ready");
         return false;
     }
+
+#ifdef WOKWI_SIMULATION
+    if (ramFallback_) {
+        if (!ramHasLastDive_) {
+            Serial.println("[LOG] no last dive log in RAM fallback");
+            return false;
+        }
+
+        header = ramLastDive_;
+
+        Serial.println("[LOG] last dive loaded from RAM fallback");
+        printHeader(header);
+        return true;
+    }
+#endif
 
     if (!LittleFS.exists(LAST_DIVE_LOG_PATH)) {
         Serial.println("[LOG] no last dive log");
@@ -95,6 +128,51 @@ bool LogStorage::loadLastDive(DiveLogHeader& header) {
 
     return true;
 }
+
+bool LogStorage::hasLastDive() {
+    if (!ready_) {
+        return false;
+    }
+
+#ifdef WOKWI_SIMULATION
+    if (ramFallback_) {
+        return ramHasLastDive_;
+    }
+#endif
+
+    return LittleFS.exists(LAST_DIVE_LOG_PATH);
+}
+
+
+bool LogStorage::clearLastDive() {
+    if (!ready_) {
+        Serial.println("[LOG] clear failed: storage not ready");
+        return false;
+    }
+
+#ifdef WOKWI_SIMULATION
+    if (ramFallback_) {
+        ramHasLastDive_ = false;
+        ramLastDive_ = {};
+        Serial.println("[LOG] RAM fallback last dive cleared");
+        return true;
+    }
+#endif
+
+    if (!LittleFS.exists(LAST_DIVE_LOG_PATH)) {
+        Serial.println("[LOG] no last dive log to clear");
+        return true;
+    }
+
+    if (!LittleFS.remove(LAST_DIVE_LOG_PATH)) {
+        Serial.println("[LOG] clear failed: remove failed");
+        return false;
+    }
+
+    Serial.println("[LOG] last dive log cleared");
+    return true;
+}
+
 
 void LogStorage::printHeader(const DiveLogHeader& header) {
     Serial.println("[LOG] ---- DiveLogHeader ----");

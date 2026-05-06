@@ -1,0 +1,26 @@
+{
+  "name": "Log Storage Quick Test",
+  "description": "Quick dive profile for testing compact log save",
+
+  "time": {
+    "startEpoch": 1735689600,
+    "tzOffsetMin": 540
+  },
+
+  "initial": {
+    "tempC": 24.0
+  },
+
+  "preload": {
+    "enabled": false,
+    "diveCount": 0
+  },
+
+  "points": [
+    { "t": 0,  "depth": 0.0,  "temp": 24.0 },
+    { "t": 5,  "depth": 12.0, "temp": 23.0 },
+    { "t": 20, "depth": 12.0, "temp": 22.0 },
+    { "t": 30, "depth": 0.0,  "temp": 24.0 },
+    { "t": 95, "depth": 0.0,  "temp": 24.0 }
+  ]
+}

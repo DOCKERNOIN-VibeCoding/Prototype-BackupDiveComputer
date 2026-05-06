@@ -68,6 +68,7 @@
 #define SAFETY_STOP_PAUSE_MAX_S      60
 #define SAFETY_STOP_SKIP_DEPTH_M      8.0f
 #define SAFETY_STOP_REEVAL_SEC       30
+#define SAFETY_STOP_SKIPPED_DISPLAY_SEC 30UL
 
 // ============================================================
 // Ascent rate / ASC bar graph

@@ -27,10 +27,20 @@ public:
     bool saveLastDive(const DiveLogHeader& header);
     bool loadLastDive(DiveLogHeader& header);
 
+    bool hasLastDive();
+    bool clearLastDive();
+
     void printHeader(const DiveLogHeader& header);
 
 private:
     bool ready_ = false;
+
+    #ifdef WOKWI_SIMULATION
+    bool ramFallback_ = false;
+    bool ramHasLastDive_ = false;
+    DiveLogHeader ramLastDive_ = {};
+
+    #endif
 };
 
 extern LogStorage logStorage;
