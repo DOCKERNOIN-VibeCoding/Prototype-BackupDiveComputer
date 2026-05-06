@@ -987,4 +987,328 @@ Subsurface XML 호환 방향,
 
 이 모든 것을 실제 제품 구조에 맞게 정리하는 단계이다.
 ```
+
+
+## 추가 섹션: 감압 위반 후 재입수 / 48시간 정책
+
+```md
+# 감압 위반 후 재입수 및 48시간 경고 정책
+
+## 1. 기본 철학
+
+BackupDiveComputer는 백업용 다이브 컴퓨터이다.
+
+따라서 메인 다이브 컴퓨터가 감압 위반으로 잠기거나 제한되더라도,
+BackupDiveComputer는 수심, 시간, 상승률, 감압 정보를 계속 제공해야 한다.
+
+이 프로젝트에서는 감압정지를 완료하지 못하고 출수한 경우에도
+컴퓨터 기능을 완전히 잠그는 hard lockout은 사용하지 않는다.
+
+대신 다음 정책을 사용한다.
+
+```text
+No hard lockout
+DECO.STOP 계산 계속
+감압 위반 상태 추적
+재입수 시 남은 감압 의무 계산
+감압 완료 시 active violation clear
+48시간 advisory/log 유지
 ```
+
+---
+
+## 2. 참고한 상업용 컴퓨터 정책
+
+### Shearwater 계열
+
+Shearwater는 감압정지 위반 후에도 컴퓨터를 잠그지 않는 정책을 사용한다.
+
+핵심 방향:
+
+```text
+No lockout for violating deco stops
+명확한 경고 제공
+컴퓨터 기능은 계속 유지
+판단은 훈련받은 다이버에게 맡김
+```
+
+이 방식은 백업용 컴퓨터에 중요하다.
+
+이유:
+
+```text
+비상 상황에서 컴퓨터가 잠기면 수심, 시간, 감압 정보가 사라질 수 있다.
+백업용 컴퓨터는 어떤 상황에서도 정보를 제공해야 한다.
+```
+
+### Suunto Nautic 계열
+
+Suunto Nautic은 algorithm deviation 발생 후에도 lock하지 않고,
+원래 decompression plan을 계속 표시한다.
+
+또한 required decompression stops가 clear되거나 48시간이 지나면
+경고 상태가 해제되는 구조를 가진다.
+
+이 프로젝트는 이 부분을 참고한다.
+
+---
+
+## 3. BackupDiveComputer 최종 정책
+
+BackupDiveComputer는 다음 혼합 정책을 사용한다.
+
+```text
+Shearwater-style:
+  hard lockout 없음
+  감압 계산 계속
+  정보 제공 계속
+
+Suunto-style:
+  감압 미해결 상태 추적
+  재입수 후 필요한 감압정지를 완료하면 active violation clear
+
+BackupDiveComputer-specific:
+  위반 이력은 로그에 영구 저장
+  48시간 동안 표면 화면에 advisory 유지
+```
+
+---
+
+## 4. 상태 구분
+
+감압 위반 후 상태는 두 가지로 나눈다.
+
+```text
+activeDecoViolation
+postViolationAdvisory
+```
+
+### activeDecoViolation
+
+현재 감압 의무가 해결되지 않은 상태이다.
+
+발생 조건 예:
+
+```text
+DECO.STOP이 필요한 상태에서
+감압정지를 완료하지 않고
+수면으로 올라와 다이빙이 종료됨
+```
+
+이 상태에서는 재입수 시 DECO.STOP을 다시 계산하고 표시해야 한다.
+
+재입수 후 필요한 감압정지를 모두 완료하면:
+
+```text
+activeDecoViolation = false
+```
+
+로 변경할 수 있다.
+
+### postViolationAdvisory
+
+감압 위반 이력이 있으므로 주의가 필요한 상태이다.
+
+이 상태는 activeDecoViolation이 clear되어도 바로 사라지지 않는다.
+
+권장 유지 시간:
+
+```text
+48 hours
+```
+
+표면 화면에서는 다음과 같은 경고를 표시한다.
+
+```text
+DIVE WARN
+47:58
+DECO VIOL
+```
+
+또는:
+
+```text
+NO DIVE ADVISED
+47:58
+```
+
+---
+
+## 5. 표면 화면 동작
+
+감압정지를 완료하지 못하고 출수하면 표면 화면에 강한 경고를 표시한다.
+
+예:
+
+```text
+MISSED DECO
+NO DIVE
+48H
+```
+
+또는:
+
+```text
+DECO VIOL
+NO DIVE ADVISED
+48H
+```
+
+이 표시는 사용자가 다음 다이빙을 하지 않도록 강하게 경고하기 위한 것이다.
+
+하지만 컴퓨터 기능 자체는 잠그지 않는다.
+
+---
+
+## 6. 재입수 시 동작
+
+48시간 advisory 중에 사용자가 다시 입수한 경우,
+이미 물속에 있으므로 `NO DIVE` 문구보다 실제 행동 지시가 우선이다.
+
+재입수 시에는 다음 정보를 계속 제공한다.
+
+```text
+현재 수심
+다이빙 시간
+상승 속도
+DECO.STOP
+TTS
+ceiling warning
+배터리
+```
+
+화면 예:
+
+```text
+VIOL
+DECO.STOP
+9m 3:00
+ASCEND
+```
+
+정지 수심에 도착하면:
+
+```text
+VIOL
+DECO.STOP
+9m 2:59
+HOLD
+```
+
+너무 얕게 올라가면:
+
+```text
+VIOL
+DECO.STOP
+9m
+DOWN!
+```
+
+---
+
+## 7. 감압 완료 시 동작
+
+재입수 후 필요한 감압정지를 모두 완료하면
+현재 감압 미해결 상태는 clear한다.
+
+```text
+activeDecoViolation = false
+```
+
+하지만 위반 이력은 로그에 남긴다.
+
+또한 48시간 advisory는 계속 유지할 수 있다.
+
+예:
+
+```text
+DECO CLEARED
+DIVE WARN 46H
+```
+
+이유:
+
+```text
+재입수 후 감압 계산이 clear되었다고 해도
+의학적으로 완전히 안전하다는 뜻은 아니다.
+장비는 치료 장비가 아니며,
+DAN 등은 감압 위반 후 재입수를 일반적으로 권장하지 않는다.
+```
+
+따라서 BackupDiveComputer는 다음 균형을 유지한다.
+
+```text
+감압 계산은 계속 제공한다.
+필요한 DECO.STOP은 안내한다.
+하지만 위반 이력과 주의 경고는 유지한다.
+```
+
+---
+
+## 8. 로그 저장 정책
+
+감압 위반과 재입수 감압 처리 과정은 compact log event로 저장해야 한다.
+
+필수 이벤트:
+
+```text
+EVENT_DECO_REQUIRED
+EVENT_DECO_STOP_STARTED
+EVENT_DECO_STOP_COMPLETED
+EVENT_DECO_CEILING_VIOLATED
+EVENT_DECO_MISSED
+EVENT_DECO_VIOLATION_SURFACED
+EVENT_DECO_REENTRY
+EVENT_DECO_CLEARED_AFTER_REENTRY
+EVENT_POST_VIOLATION_ADVISORY_STARTED
+EVENT_POST_VIOLATION_ADVISORY_ENDED
+```
+
+로그에는 다음 정보도 포함하는 것이 좋다.
+
+```text
+violationStartEpochSec
+violationEndEpochSec
+advisoryEndEpochSec
+missedStopDepthM
+missedStopRemainSec
+reentryCount
+clearedAfterReentry
+```
+
+---
+
+## 9. 구현 우선순위
+
+v1.3에서는 다음 순서로 구현한다.
+
+```text
+1. DECO.STOP 표시 상태 정리
+2. stop window / ceiling violation 기준 정리
+3. 감압 미완료 출수 감지
+4. activeDecoViolation 상태 추가
+5. postViolationAdvisory 48시간 타이머 추가
+6. 재입수 시 DECO.STOP 재계산 유지
+7. 감압 완료 시 activeDecoViolation clear
+8. compact log event 저장
+9. Surface UI에 advisory 표시
+```
+
+---
+
+## 10. 주의
+
+이 기능은 재입수를 권장하기 위한 기능이 아니다.
+
+목적은 다음이다.
+
+```text
+이미 재입수한 다이버에게 필요한 정보를 계속 제공한다.
+메인 컴퓨터가 잠겼을 때 백업 컴퓨터 역할을 유지한다.
+감압 미해결 상태를 추적하고, 가능한 경우 계산상 clear 상태를 판단한다.
+```
+
+의학적 판단이나 재입수 여부는 다이버의 훈련, 현장 상황, 응급 절차,
+DAN 또는 의료기관 지침을 따라야 한다.
+```
+

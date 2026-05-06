@@ -230,3 +230,33 @@
 - [ ] Charging UI 정상
 - [ ] 문서 4개 최신화
 - [ ] GitHub dev/v1.2에 최종 push
+
+---
+
+```md
+## DECO.STOP / 감압 위반 / 재입수 정책
+
+- [ ] DECO.STOP 표시를 행동 지시 중심으로 정리
+- [ ] DECO.STOP 화면에 `ASCEND`, `HOLD`, `DOWN!` 상태 추가
+- [ ] stop window 기준 추가
+  - [ ] stop depth보다 약간 깊은 범위에서 HOLD 허용
+  - [ ] stop depth보다 0.6m 이상 얕으면 ceiling violation 처리
+- [ ] 감압정지 타이머는 stop window 안에서만 감소하도록 수정
+- [ ] 감압정지를 완료하지 않고 출수한 경우 `activeDecoViolation` 설정
+- [ ] 감압정지 미완료 출수 시 `postViolationAdvisory` 48시간 타이머 시작
+- [ ] 표면 화면에 `MISSED DECO` / `NO DIVE ADVISED` / 남은 시간 표시
+- [ ] 48시간 advisory 중에도 hard lockout 하지 않도록 구현
+- [ ] 48시간 advisory 중 재입수 시 DECO.STOP 계산 계속
+- [ ] 재입수 중에는 `NO DIVE`보다 `DECO.STOP` 행동 지시를 우선 표시
+- [ ] 재입수 후 필요한 감압정지를 모두 완료하면 `activeDecoViolation` clear
+- [ ] `postViolationAdvisory`는 48시간 동안 유지하거나 별도 정책으로 종료
+- [ ] compact log에 감압 위반 이벤트 저장
+- [ ] compact log에 재입수 후 감압 clear 이벤트 저장
+- [ ] 감압 위반 이력을 dive log header 또는 event list에 기록
+- [ ] 테스트 시나리오 추가
+  - [ ] 감압정지 미완료 출수
+  - [ ] 48시간 advisory 중 재입수
+  - [ ] 재입수 후 DECO.STOP 완료
+  - [ ] active violation clear 확인
+  - [ ] advisory 표시 유지 확인
+```

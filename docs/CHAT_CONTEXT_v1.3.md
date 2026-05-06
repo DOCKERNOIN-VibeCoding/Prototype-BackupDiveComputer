@@ -397,3 +397,229 @@ GPS 시간이 없는 상태에서 기록된 로그는 timeSessionId를 이용해
 나중에 보정 가능 여부를 판단한다.
 ```
 ```
+
+
+```md
+## v1.3 감압 위반 / 재입수 정책 결정
+
+DECO.STOP 미완료 출수 후 정책은 다음으로 결정한다.
+
+```text
+Hard lockout 없음
+48시간 advisory 표시
+감압 계산 계속 유지
+재입수 시 DECO.STOP 재계산 및 표시
+재입수 후 필요한 감압정지를 완료하면 activeDecoViolation clear
+위반 이력은 로그에 유지
+postViolationAdvisory는 48시간 동안 Surface UI에 표시
+```
+
+참고한 상업용 컴퓨터 방향:
+
+```text
+Shearwater:
+  감압정지 위반 후 lockout 없음
+  경고는 표시하지만 컴퓨터 기능은 계속 제공
+
+Suunto Nautic:
+  algorithm deviation 후에도 lock하지 않음
+  원래 decompression plan 계속 표시
+  required decompression stops clear 또는 48시간 후 경고 해제
+```
+
+BackupDiveComputer 최종 방향:
+
+```text
+Shearwater처럼 hard lockout하지 않는다.
+Suunto처럼 감압 미해결 상태를 추적하고,
+재입수 후 DECO.STOP 완료 시 active violation은 clear한다.
+다만 백업용 안전 정책으로 위반 이력과 48시간 advisory는 유지한다.
+```
+
+UI 우선순위:
+
+```text
+표면:
+  MISSED DECO
+  NO DIVE ADVISED
+  48H countdown
+
+수중 재입수:
+  VIOL badge
+  DECO.STOP
+  ASCEND / HOLD / DOWN
+```
+
+구현 예정 상태값:
+
+```text
+activeDecoViolation
+postViolationAdvisory
+advisoryEndEpochSec
+missedStopDepthM
+missedStopRemainSec
+reentryCount
+clearedAfterReentry
+```
+
+compact log event 후보:
+
+```text
+EVENT_DECO_MISSED
+EVENT_DECO_VIOLATION_SURFACED
+EVENT_DECO_REENTRY
+EVENT_DECO_CLEARED_AFTER_REENTRY
+EVENT_POST_VIOLATION_ADVISORY_STARTED
+EVENT_POST_VIOLATION_ADVISORY_ENDED
+```
+```
+
+---
+
+# 6. beginner-friendly VS Code 수정 순서
+
+초보자 기준으로 안전하게 하려면 이렇게 하시면 됩니다.
+
+## 1단계: 브랜치 확인
+
+VS Code 터미널에서:
+
+```bash
+git branch
+```
+
+아래처럼 보여야 합니다.
+
+```text
+* dev/v1.3
+```
+
+아니라면:
+
+```bash
+git checkout dev/v1.3
+```
+
+---
+
+## 2단계: 문서 열기
+
+VS Code 왼쪽 Explorer에서:
+
+```text
+docs
+```
+
+폴더를 열고 아래 파일을 하나씩 클릭합니다.
+
+```text
+DEVELOPMENT_v1.3.md
+TODO.md
+CHANGELOG.md
+CHAT_CONTEXT_v1.3.md
+```
+
+---
+
+## 3단계: 위 내용 붙여넣기
+
+각 파일에 위에서 제시한 섹션을 붙여넣습니다.
+
+주의:
+
+```text
+기존 내용을 삭제하지 말고, 아래쪽에 추가하는 방식이 안전합니다.
+```
+
+---
+
+## 4단계: 저장
+
+각 파일 수정 후:
+
+```text
+Ctrl + S
+```
+
+또는 macOS라면:
+
+```text
+Cmd + S
+```
+
+---
+
+## 5단계: 변경 확인
+
+터미널에서:
+
+```bash
+git status
+```
+
+예상:
+
+```text
+modified: docs/DEVELOPMENT_v1.3.md
+modified: docs/TODO.md
+modified: docs/CHANGELOG.md
+modified: docs/CHAT_CONTEXT_v1.3.md
+```
+
+---
+
+## 6단계: 커밋
+
+```bash
+git add docs/DEVELOPMENT_v1.3.md docs/TODO.md docs/CHANGELOG.md docs/CHAT_CONTEXT_v1.3.md
+git commit -m "Document deco violation reentry advisory policy"
+```
+
+---
+
+## 7단계: 푸시
+
+```bash
+git push origin dev/v1.3
+```
+
+---
+
+# 7. 이번 문서 업데이트 후 다음 개발 순서
+
+문서 업데이트 후 실제 코드 구현은 이 순서가 좋습니다.
+
+```text
+1. compact log event type에 감압 위반 이벤트 추가
+2. DiveRuntime에 activeDecoViolation 상태 추가
+3. 앱 클래스에 postViolationAdvisory / advisoryEndEpochSec 추가
+4. DECO.STOP 미완료 출수 감지
+5. 표면 화면에 48시간 advisory 표시
+6. 재입수 시 조직 계산 유지 및 DECO.STOP 표시
+7. 감압 완료 시 activeDecoViolation clear
+8. 로그 저장
+9. 시나리오 테스트
+```
+
+---
+
+# 8. 정리
+
+이번 문서 업데이트의 핵심 문장은 이것입니다.
+
+```text
+BackupDiveComputer는 감압 위반 후 hard lockout하지 않는다.
+대신 감압 미해결 상태와 48시간 advisory를 추적한다.
+재입수 시에는 백업 컴퓨터로서 DECO.STOP을 계속 계산하고 표시한다.
+필요한 감압정지가 완료되면 active violation은 clear한다.
+하지만 위반 이력과 주의 표시는 로그와 Surface UI에 유지한다.
+```
+
+이 정책이면 사용 목적이 명확해집니다.
+
+```text
+레크리에이션 컴퓨터처럼 단순히 잠그는 장비가 아니라,
+비상 상황에서도 계속 정보를 제공하는 백업용 다이브 컴퓨터
+```
+
+라는 방향과 잘 맞습니다.

@@ -6,6 +6,49 @@
 
 ## dev/v1.2 - Current
 
+```md
+### 2026-05-06
+
+#### 감압 위반 후 재입수 / 48시간 advisory 정책 정리
+
+BackupDiveComputer의 감압 위반 후 동작 정책을 정리했다.
+
+기존 검토 내용:
+
+```text
+일부 레크리에이션 컴퓨터는 감압정지 미완료 출수 후 24~48시간 lockout을 사용한다.
+Shearwater 계열은 감압정지 위반 후에도 hard lockout 하지 않고 정보를 계속 제공한다.
+Suunto Nautic 계열은 algorithm deviation 후에도 lock하지 않으며,
+필요한 decompression stop이 clear되거나 48시간이 지나면 경고 상태가 해제되는 구조를 가진다.
+```
+
+BackupDiveComputer v1.3 개발 정책:
+
+```text
+hard lockout은 사용하지 않는다.
+감압 계산과 DECO.STOP 안내는 계속 제공한다.
+감압정지 미완료 출수 시 activeDecoViolation을 설정한다.
+48시간 postViolationAdvisory를 시작한다.
+재입수 시 DECO.STOP을 다시 계산하고 표시한다.
+재입수 후 필요한 감압정지를 모두 완료하면 activeDecoViolation은 clear한다.
+위반 이력과 advisory는 로그와 Surface UI에 남긴다.
+```
+
+UI 방향:
+
+```text
+표면:
+MISSED DECO / NO DIVE ADVISED / 48H
+
+재입수 중:
+VIOL + DECO.STOP + ASCEND/HOLD/DOWN
+```
+
+이 정책은 백업용 다이브 컴퓨터의 목적에 맞게,
+메인 컴퓨터가 잠기거나 제한되더라도 필요한 감압 정보를 계속 제공하기 위한 것이다.
+```
+```
+
 ### 2026-05-05
 
 현재 개발 브랜치:

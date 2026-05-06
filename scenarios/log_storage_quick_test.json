@@ -1,6 +1,6 @@
 {
-  "name": "Log Storage Quick Test",
-  "description": "Quick dive profile for testing compact log save",
+  "name": "Repetitive Deep Dive Deco Violation Test",
+  "description": "Three repetitive 60m dives to test NDL drop, deco request, safety stop skip, and 48h no-fly after deco violation",
 
   "time": {
     "startEpoch": 1735689600,
@@ -17,10 +17,26 @@
   },
 
   "points": [
-    { "t": 0,  "depth": 0.0,  "temp": 24.0 },
-    { "t": 5,  "depth": 12.0, "temp": 23.0 },
-    { "t": 20, "depth": 12.0, "temp": 22.0 },
-    { "t": 30, "depth": 0.0,  "temp": 24.0 },
-    { "t": 95, "depth": 0.0,  "temp": 24.0 }
+    { "t": 0,    "depth": 0.0,  "temp": 24.0 },
+
+    { "t": 30,   "depth": 60.0, "temp": 20.0 },
+    { "t": 150,  "depth": 60.0, "temp": 19.0 },
+    { "t": 510,  "depth": 0.0,  "temp": 24.0 },
+
+    { "t": 630,  "depth": 0.0,  "temp": 24.0 },
+
+    { "t": 660,  "depth": 60.0, "temp": 20.0 },
+    { "t": 780,  "depth": 60.0, "temp": 19.0 },
+    { "t": 866,  "depth": 40.0, "temp": 20.0 },
+    { "t": 1016, "depth": 20.0, "temp": 21.0 },
+    { "t": 1116, "depth": 0.0,  "temp": 24.0 },
+
+    { "t": 1176, "depth": 0.0,  "temp": 24.0 },
+
+    { "t": 1206, "depth": 60.0, "temp": 20.0 },
+    { "t": 1506, "depth": 60.0, "temp": 18.0 },
+    { "t": 1706, "depth": 0.0,  "temp": 24.0 },
+
+    { "t": 1850, "depth": 0.0,  "temp": 24.0 }
   ]
 }
