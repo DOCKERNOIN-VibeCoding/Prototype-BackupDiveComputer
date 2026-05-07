@@ -27,7 +27,8 @@
       "id": "bz1",
       "top": 180,
       "left": 420,
-      "attrs": {}
+      "attrs": {
+        "mode": "smooth"
     }
   ],
   "connections": [
@@ -36,7 +37,8 @@
     [ "esp:5", "oled:SDA", "green", [] ],
     [ "esp:6", "oled:SCL", "blue", [] ],
 
-    [ "esp:4", "bz1:1", "orange", [] ],
-    [ "esp:GND.2", "bz1:2", "black", [] ]
+    [ "esp:GND.2", "bz1:1", "black", [] ],
+    [ "esp:4", "bz1:2", "orange", [] ]
+
   ]
 }

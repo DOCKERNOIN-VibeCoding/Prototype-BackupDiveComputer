@@ -55,6 +55,7 @@ void MockServices::printHelp() {
     Serial.println("gps ok");
     Serial.println("gps fail");
     Serial.println("battery 75");
+    Serial.println("beep test");
     Serial.println("log info");
     Serial.println("log clear");
     Serial.println("==================================");
@@ -170,6 +171,13 @@ void MockServices::handleCommand(String cmd, SimSensor& sensor) {
         return;
     }
 
+    if (cmd == "beep test") {
+    Serial.println("[MOCK_BUZZER] beep test");
+    tone(PIN_BUZZER, 2000, 300);
+    return;
+    }
+
+
         if (cmd == "log info") {
         DiveLogHeader header;
 
@@ -197,7 +205,7 @@ void MockServices::loggerSample(uint16_t sampleCount,
                                 float depthM,
                                 float tempC,
                                 uint16_t ndlOrTts) {
-    Serial.printf("[MOCK_LOG] sample %u depth=%.1f temp=%.1f ndl/tts=%u\n",
+    Serial.printf("[MOCK_LOG] sample %u depth=%.1f temp=%.1f ndl/tts=%u\r\n",
                   sampleCount, depthM, tempC, ndlOrTts);
 }
 

@@ -901,26 +901,35 @@ void uiDrawDiveDeco(float depthM,
 
     // 행동 지시
     const char* actionText = "HOLD";
+    int8_t actionArrow = 0; // 1 = up, -1 = down, 0 = none
 
     if (stopDepthM > 0) {
-        if (depthM > (float)stopDepthM + 1.0f) {
-            actionText = "ASCEND!";
-        } else if (depthM < (float)stopDepthM - 0.5f) {
-            actionText = "DOWN!";
+        if (depthM > (float)stopDepthM + DECO_STOP_WINDOW_M) {
+            actionText = "ASCEND";
+            actionArrow = 1;
+        } else if (depthM < (float)stopDepthM - DECO_STOP_WINDOW_M) {
+            actionText = "DESCEND";
+            actionArrow = -1;
         } else {
             actionText = "HOLD";
+            actionArrow = 0;
         }
     }
 
     bool blinkOn = ((millis() / 500UL) % 2UL) == 0;
 
     if (blinkOn) {
-        if (strcmp(actionText, "DOWN!") == 0) {
-            u8g2.setFont(u8g2_font_4x6_tr);
-            u8g2.drawStr(68, 62, actionText);
-        } else {
-            u8g2.setFont(u8g2_font_5x7_tr);
-            u8g2.drawStr(68, 62, actionText);
+        u8g2.setFont(u8g2_font_5x7_tr);
+        u8g2.drawStr(68, 62, actionText);
+
+        // Draw arrow icon manually.
+        // This avoids font/Unicode compatibility issues.
+        if (actionArrow > 0) {
+            // Up triangle ▲
+            u8g2.drawTriangle(114, 55, 109, 62, 119, 62);
+        } else if (actionArrow < 0) {
+            // Down triangle ▼
+            u8g2.drawTriangle(109, 55, 119, 55, 114, 62);
         }
     }
 

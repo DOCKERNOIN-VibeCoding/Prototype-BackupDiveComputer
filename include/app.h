@@ -138,6 +138,7 @@ private:
     uint16_t calcSafetyTTSMin(uint32_t safetyRemainSec) const;
 
     void beep(uint32_t freq, uint32_t durationMs);
+    void beepTripleWarning();
 
     uint32_t getCurrentEpochSec() const;
     uint32_t getSurfaceIntervalSec() const;

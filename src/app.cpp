@@ -441,7 +441,7 @@ if (dive_.depthM < DIVE_END_DEPTH_M) {
         if (now - lastAscentAlarmMs >= 3000UL) {
             lastAscentAlarmMs = now;
             Serial.printf("[ALARM] Fast ascent %.1f m/min\n", dive_.ascentRateMpm);
-            beep(ALARM_FREQ_ASCENT_WARN, 120);
+            beepTripleWarning();
         }
     }
 
@@ -1019,8 +1019,8 @@ void DiveComputerApp::updateBatteryLowPopup() {
         Serial.print(batteryPct);
         Serial.println("%");
 
-        // Optional beep.
-        // beep(900, 120);
+        beep(ALARM_FREQ_BATTERY_LOW, 80);
+
     }
 }
 
@@ -1032,13 +1032,18 @@ bool DiveComputerApp::isBatteryLowPopupActive() const {
 }
 
 void DiveComputerApp::beep(uint32_t freq, uint32_t durationMs) {
-#ifdef WOKWI_SIMULATION
-    (void)freq;
-    (void)durationMs;
-    return;
-#else
+    if (freq == 0 || durationMs == 0) {
+        return;
+    }
+
     tone(PIN_BUZZER, freq, durationMs);
-#endif
+}
+
+void DiveComputerApp::beepTripleWarning() {
+    for (uint8_t i = 0; i < 3; i++) {
+        beep(ALARM_FREQ_ASCENT_WARN, 100);
+        delay(130);
+    }
 }
 
 
