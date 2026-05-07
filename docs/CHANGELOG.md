@@ -4,9 +4,15 @@
 본 문서는 BackupDiveComputer 프로젝트의 주요 변경 사항을 기록한다.
 ---
 
+## Unreleased
+
+### Added
+- Add `docs/HARDWARE_PROTOTYPE.md` to document the real prototype hardware specification, ESP32-S3 pin map, ST7567A SPI LCD wiring, MS5837 wiring, GPS wiring, battery/charging policy, and open hardware validation items.
+- Add `docs/HARDWARE_PROTOTYPE.json` for machine-readable hardware pin map, wiring table, components, power rails, and validation checklist.
+
+
 ## dev/v1.2 - Current
 
-```md
 ### 2026-05-06
 
 #### 감압 위반 후 재입수 / 48시간 advisory 정책 정리
@@ -303,8 +309,6 @@ timeSessionId based log correction
 
 ## v1.3 - Current
 
-
-```md
 ### 2026-05-07
 
 #### FO2 기반 gas 설정 및 Nitrox-ready 구조 추가
@@ -532,12 +536,4 @@ old dev/v7.3      → dev/v1.3
 
 ```bash
 git push origin --delete dev/v7.3
-```
-
-## Unreleased
-
-### Added
-- Add `docs/HARDWARE_PROTOTYPE.md` to document the real prototype hardware specification, ESP32-S3 pin map, ST7567A SPI LCD wiring, MS5837 wiring, GPS wiring, battery/charging policy, and open hardware validation items.
-- Add `docs/HARDWARE_PROTOTYPE.json` for machine-readable hardware pin map, wiring table, components, power rails, and validation checklist.
-
 ```

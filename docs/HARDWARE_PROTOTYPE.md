@@ -771,15 +771,3 @@ GPIO14 = GPS Power Enable
 
 본 장치는 반드시 보조 장비 또는 실험 장비로만 사용해야 합니다.
 ```
-
----
-
-그리고 `README.md`에는 짧게 링크만 추가하면 좋습니다.
-
-```markdown
-## Hardware Prototype
-
-Actual prototype hardware information is documented in:
-
-- [docs/HARDWARE_PROTOTYPE.md](docs/HARDWARE_PROTOTYPE.md)
-```
