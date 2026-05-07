@@ -1312,3 +1312,103 @@ v1.3에서는 다음 순서로 구현한다.
 DAN 또는 의료기관 지침을 따라야 한다.
 ```
 
+## Automatic Sequential DECO.STOP Policy
+
+BackupDiveComputer is a standalone automatic dive computer with no buttons.
+It shall not require any manual menu navigation to view or execute decompression.
+
+Mandatory decompression shall be guided through a fixed 3m-step ladder:
+
+- 18m
+- 15m
+- 12m
+- 9m
+- 6m
+- 3m
+
+The device shall not show a full decompression plan table. Instead, it shall show
+only the current required DECO.STOP. After the current stop is completed, the next
+required stop is shown automatically.
+
+Example:
+
+- DECO.STOP 12m 1:00
+- after completion: DECO.STOP 9m 1:00
+- after completion: DECO.STOP 6m 2:00
+- after completion: DECO.STOP 3m 3:00
+- after completion: DECO CLEAR
+
+The stop depths are selected from the fixed ladder, but stop durations are not fixed.
+Stop durations must be calculated in real time from the current tissue nitrogen
+loading and decompression model.
+
+The first stop is determined from the current raw decompression ceiling:
+
+- ceiling <= 3m  -> first stop 3m
+- ceiling <= 6m  -> first stop 6m
+- ceiling <= 9m  -> first stop 9m
+- ceiling <= 12m -> first stop 12m
+- ceiling <= 15m -> first stop 15m
+- ceiling <= 18m -> first stop 18m
+
+If the raw ceiling is deeper than 18m, the computer shall not incorrectly display
+18m as a safe stop. It shall display a CEIL >18m warning and continue calculating
+until the ceiling becomes compatible with the supported ladder.
+
+The current stop is completed when the calculated ceiling allows ascent to the next
+shallower ladder stop. For the final 3m stop, completion requires that surfacing is
+allowed by the decompression model.
+
+DECO.STOP remains the safety-critical instruction label.
+Safety stop remains separate as S-STOP and shall never be mixed with DECO.STOP.
+
+(Commercial Dive Computer Deco.Plan works reference : https://www.youtube.com/watch?v=O3rDf7O7snM , https://www.youtube.com/watch?v=3KEwlSqEQvo )
+
+
+## Recreational Single-Gas Air/Nitrox Policy
+
+BackupDiveComputer is designed as a recreational backup dive computer, not a
+technical diving computer.
+
+Supported gas model:
+
+- Single active gas only
+- Air / EAN21
+- Nitrox / EANx, planned range 21% to 40% oxygen
+
+Unsupported:
+
+- Multi-gas switching
+- Double tank gas management
+- Trimix
+- Helium
+- CCR
+- Bailout gas
+- Deco gas switching
+
+The default gas shall be Air / EAN21 for safety. EAN32 is not air; EAN32 means
+32% oxygen and 68% nitrogen. If the diver is actually breathing air but the computer
+calculates using EAN32, the computer may underestimate nitrogen loading.
+
+The firmware shall be structured to support configurable FO2 even before the mobile
+app is implemented. Initially, FO2 may be defined as a compile-time configuration or
+scenario value. In the future, FO2 shall be configurable from the mobile app and
+stored in non-volatile settings.
+
+Gas configuration shall affect:
+
+- tissue nitrogen loading
+- NDL calculation
+- DECO.STOP timing
+- MOD / ppO2 warning
+- dive log metadata
+- Subsurface XML export
+
+DECO.STOP ladder remains:
+
+- 18m
+- 15m
+- 12m
+- 9m
+- 6m
+- 3m

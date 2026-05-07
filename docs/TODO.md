@@ -260,3 +260,109 @@
   - [ ] active violation clear 확인
   - [ ] advisory 표시 유지 확인
 ```
+
+## Sequential 18/15/12/9/6/3 DECO.STOP Implementation
+
+- [ ] Add fixed DECO ladder: 18m, 15m, 12m, 9m, 6m, 3m.
+- [ ] Remove single-stop-only deco behavior.
+- [ ] Track real-time tissue nitrogen loading.
+- [ ] Calculate raw decompression ceiling from tissue state.
+- [ ] Map raw ceiling to first stop in the fixed ladder.
+- [ ] If raw ceiling >18m, show CEIL >18m warning instead of forcing 18m stop.
+- [ ] Show only current DECO.STOP, not full plan.
+- [ ] Automatically advance to next stop after current stop completes.
+- [ ] Estimate current stop remaining time by simulating tissue off-gassing at stop depth.
+- [ ] Recalculate stop remaining time periodically during the stop.
+- [ ] Start countdown only inside stop window.
+- [ ] Pause or warn when diver is too shallow.
+- [ ] Keep current stop active until completion; do not jump to shallower stop prematurely.
+- [ ] Allow upgrade to deeper stop before stop execution if tissue loading increases.
+- [ ] Separate DECO.STOP from S-STOP.
+- [ ] Add test: minimal deco requiring 3m only.
+- [ ] Add test: moderate deco requiring 9m -> 6m -> 3m.
+- [ ] Add test: heavy deco requiring 18m -> 15m -> 12m -> 9m -> 6m -> 3m.
+- [ ] Add test: raw ceiling >18m warning behavior.
+
+
+## Air/Nitrox Single Gas Support
+
+- [ ] Add GasConfig structure with fo2Percent and ppO2MaxBar.
+- [ ] Default gas to Air / EAN21.
+- [ ] Allow compile-time or scenario-based FO2 override.
+- [ ] Reserve future NVS storage for app-configured FO2.
+- [ ] Support Nitrox range 21% to 40%.
+- [ ] Calculate FN2 from FO2 for tissue nitrogen loading.
+- [ ] Apply gas FO2/FN2 to NDL and DECO.STOP calculations.
+- [ ] Add MOD calculation from FO2 and ppO2 limit.
+- [ ] Add ppO2 high warning structure.
+- [ ] Store gasFo2Percent in compact dive log header.
+- [ ] Include gas information in Subsurface XML export.
+- [ ] Add simulation scenarios for AIR/EAN21 and EAN32.
+- [ ] Ensure no multi-gas switching, Trimix, CCR, or bailout gas logic is introduced.
+
+
+---
+
+```md
+## Air/Nitrox-Ready Gas Configuration
+
+- [ ] Add gas configuration constants to `include/config.h`.
+  - `DIVE_GAS_FO2_PERCENT`
+  - `DIVE_GAS_PPO2_MAX_BAR`
+  - `DIVE_GAS_FO2_MIN_PERCENT`
+  - `DIVE_GAS_FO2_MAX_PERCENT`
+
+- [ ] Set default gas to Air / EAN21.
+  - FO2 = 21%
+  - FN2 = 79%
+
+- [ ] Ensure Bühlmann algorithm reads FO2 from configuration.
+  - Do not hardcode nitrogen fraction.
+  - Calculate FN2 as `1.0f - FO2`.
+
+- [ ] Apply configured FN2 to tissue nitrogen loading.
+
+- [ ] Apply configured FN2 to NDL calculation.
+
+- [ ] Apply configured FN2 to decompression ceiling calculation.
+
+- [ ] Apply configured FN2 to DECO.STOP duration calculation.
+
+- [ ] Add MOD calculation helper.
+  - Formula: `MOD(m) = ((ppO2Max / FO2) - 1.0) * 10`
+  - Default ppO2 max: 1.4 bar
+
+- [ ] If FO2 > 21%, display MOD continuously during dive mode.
+
+- [ ] Add MOD exceeded warning.
+  - Trigger when current depth is deeper than calculated MOD.
+  - Display `PPO2 HIGH` or `MOD EXCEEDED`.
+  - Warning shall not lock or disable dive computer functions.
+
+- [ ] Add gas label helper.
+  - FO2 21% -> `AIR` or `EAN21`
+  - FO2 32% -> `EAN32`
+  - FO2 36% -> `EAN36`
+
+- [ ] Reserve future NVS / Preferences storage for app-configured FO2.
+
+- [ ] Add gas FO2 field to compact dive log header.
+
+- [ ] Add gas FO2 field to future Subsurface XML export.
+
+- [ ] Add simulation scenario for default Air / EAN21.
+
+- [ ] Add simulation scenario for EAN32 with MOD display.
+
+- [ ] Add test case:
+  - FO2 = 21%
+  - MOD not shown or low-priority
+  - Bühlmann calculation uses FN2 = 0.79
+
+- [ ] Add test case:
+  - FO2 = 32%
+  - MOD ≈ 33.7m at ppO2 1.4
+  - MOD displayed during dive
+  - ppO2 warning triggered when depth exceeds MOD
+
+- [ ] Confirm that no multi-gas, double tank, trimix, CCR, or bailout gas logic is introduced.
