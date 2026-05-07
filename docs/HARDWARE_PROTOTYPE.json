@@ -1,0 +1,794 @@
+{
+  "project": {
+    "name": "Prototype Backup Dive Computer",
+    "hardwareRevision": "prototype-v1.3",
+    "documentVersion": "0.1.0",
+    "targetMcu": "ESP32-S3 N16R8 Dev Board",
+    "description": "Hardware definition for the real prototype backup dive computer using ESP32-S3, ST7567A SPI LCD, MS5837-30BA pressure sensor, UART GPS, piezo disc buzzer, protected 16340 battery, and wireless charging.",
+    "status": "draft"
+  },
+  "warnings": [
+    "This hardware definition is for prototype development only.",
+    "The device is not certified as a life-support or primary dive computer.",
+    "Waterproofing, pressure testing, battery safety, sensor calibration, and firmware validation are required before any real dive usage."
+  ],
+  "mcu": {
+    "name": "ESP32-S3 N16R8 Dev Board",
+    "logicVoltage": 3.3,
+    "flashMb": 16,
+    "psramMb": 8,
+    "notes": [
+      "Avoid strapping pins and USB pins for general peripherals.",
+      "GPIO numbers are ESP32 GPIO numbers, not physical header pin numbers."
+    ]
+  },
+  "powerRails": [
+    {
+      "name": "GND",
+      "voltage": 0,
+      "type": "ground",
+      "description": "Common ground for all modules."
+    },
+    {
+      "name": "3V3",
+      "voltage": 3.3,
+      "type": "regulated",
+      "description": "3.3V rail for ESP32 logic, MS5837 pressure sensor, and LCD logic."
+    },
+    {
+      "name": "5V",
+      "voltage": 5.0,
+      "type": "boost_or_usb",
+      "description": "5V rail for GPS module and possibly ESP32 dev board 5V input."
+    },
+    {
+      "name": "VBAT",
+      "voltageNominal": 3.7,
+      "voltageMax": 4.2,
+      "type": "battery",
+      "description": "Protected 16340 Li-ion battery rail."
+    }
+  ],
+  "pinMap": {
+    "GPIO1": {
+      "function": "BATTERY_ADC",
+      "direction": "input",
+      "signalType": "adc",
+      "connectedTo": "battery_voltage_divider",
+      "required": false,
+      "notes": [
+        "Battery voltage must be divided before entering ESP32 ADC.",
+        "Do not connect Li-ion battery directly to GPIO."
+      ]
+    },
+    "GPIO2": {
+      "function": "QI_DETECT",
+      "direction": "input",
+      "signalType": "digital",
+      "connectedTo": "wireless_charger_5v_detect_divider",
+      "required": false,
+      "notes": [
+        "Qi 5V output must be divided to 3.3V logic level.",
+        "Do not connect 5V directly to GPIO2."
+      ]
+    },
+    "GPIO4": {
+      "function": "BUZZER",
+      "direction": "output",
+      "signalType": "pwm_tone",
+      "connectedTo": "piezo_disc",
+      "required": true,
+      "notes": [
+        "Use 100 to 330 ohm series resistor if possible.",
+        "Piezo disc will be mounted to action camera housing wall."
+      ]
+    },
+    "GPIO5": {
+      "function": "I2C_SDA",
+      "direction": "bidirectional",
+      "signalType": "i2c",
+      "connectedTo": [
+        "ms5837_sda"
+      ],
+      "required": true,
+      "notes": [
+        "I2C bus SDA line.",
+        "Can be shared by multiple I2C devices if addresses are unique.",
+        "In the real prototype, the ST7567A LCD is SPI, so GPIO5 is mainly used by MS5837."
+      ]
+    },
+    "GPIO6": {
+      "function": "I2C_SCL",
+      "direction": "output",
+      "signalType": "i2c",
+      "connectedTo": [
+        "ms5837_scl"
+      ],
+      "required": true,
+      "notes": [
+        "I2C bus SCL line.",
+        "Can be shared by multiple I2C devices if addresses are unique.",
+        "In the real prototype, the ST7567A LCD is SPI, so GPIO6 is mainly used by MS5837."
+      ]
+    },
+    "GPIO7": {
+      "function": "LCD_BACKLIGHT",
+      "direction": "output",
+      "signalType": "gpio_pwm",
+      "connectedTo": "lcd_backlight",
+      "required": true,
+      "notes": [
+        "Controls LCD backlight.",
+        "PWM dimming may be supported.",
+        "If the LCD module already has a backlight resistor, direct GPIO drive may be possible; otherwise add resistor/transistor driver."
+      ]
+    },
+    "GPIO8": {
+      "function": "LCD_DC",
+      "direction": "output",
+      "signalType": "gpio",
+      "connectedTo": "lcd_dc",
+      "required": true,
+      "notes": [
+        "LCD Data/Command select pin."
+      ]
+    },
+    "GPIO9": {
+      "function": "LCD_RESET",
+      "direction": "output",
+      "signalType": "gpio",
+      "connectedTo": "lcd_reset",
+      "required": true,
+      "notes": [
+        "LCD reset pin."
+      ]
+    },
+    "GPIO10": {
+      "function": "LCD_CS",
+      "direction": "output",
+      "signalType": "spi_cs",
+      "connectedTo": "lcd_cs",
+      "required": true,
+      "notes": [
+        "LCD chip select pin."
+      ]
+    },
+    "GPIO11": {
+      "function": "LCD_MOSI",
+      "direction": "output",
+      "signalType": "spi_mosi",
+      "connectedTo": "lcd_sda_din",
+      "required": true,
+      "notes": [
+        "LCD SPI data input.",
+        "LCD module may label this pin as SDA, DIN, or MOSI."
+      ]
+    },
+    "GPIO12": {
+      "function": "LCD_SCLK",
+      "direction": "output",
+      "signalType": "spi_clock",
+      "connectedTo": "lcd_scl_clk",
+      "required": true,
+      "notes": [
+        "LCD SPI clock.",
+        "LCD module may label this pin as SCL, CLK, or SCK."
+      ]
+    },
+    "GPIO14": {
+      "function": "GPS_POWER_ENABLE",
+      "direction": "output",
+      "signalType": "gpio",
+      "connectedTo": "gps_load_switch_enable",
+      "required": false,
+      "notes": [
+        "Controls GPS power through load switch or MOSFET.",
+        "Recommended to reduce standby current.",
+        "HIGH means GPS power on if using active-high load switch."
+      ]
+    },
+    "GPIO15": {
+      "function": "GPS_TX",
+      "direction": "output",
+      "signalType": "uart_tx",
+      "connectedTo": "gps_rx",
+      "required": true,
+      "notes": [
+        "ESP32 TX connects to GPS RX.",
+        "UART TX/RX must be cross-connected."
+      ]
+    },
+    "GPIO16": {
+      "function": "GPS_RX",
+      "direction": "input",
+      "signalType": "uart_rx",
+      "connectedTo": "gps_tx",
+      "required": true,
+      "notes": [
+        "ESP32 RX connects to GPS TX.",
+        "UART TX/RX must be cross-connected."
+      ]
+    }
+  },
+  "components": [
+    {
+      "id": "mcu",
+      "type": "microcontroller",
+      "name": "ESP32-S3 N16R8 Dev Board",
+      "required": true,
+      "voltage": {
+        "logic": 3.3,
+        "powerInputOptions": [
+          "5V pin through onboard regulator",
+          "3V3 pin through external regulated 3.3V supply"
+        ]
+      },
+      "notes": [
+        "Prototype board for firmware and hardware validation.",
+        "Final PCB may use a more power-optimized ESP32-S3 module design."
+      ]
+    },
+    {
+      "id": "lcd",
+      "type": "display",
+      "name": "12864 SPI LCD Module ST7567A",
+      "required": true,
+      "interface": "spi_4wire",
+      "resolution": {
+        "width": 128,
+        "height": 64
+      },
+      "controller": "ST7567A",
+      "purchaseReference": {
+        "vendor": "AliExpress",
+        "itemId": "1005004706328499",
+        "description": "12864 SPI LCD Module 128x64 ST7567A COG Graphic Display"
+      },
+      "power": {
+        "vcc": "3V3",
+        "logicVoltage": 3.3
+      },
+      "connections": [
+        {
+          "pin": "GND",
+          "net": "GND"
+        },
+        {
+          "pin": "VCC",
+          "net": "3V3"
+        },
+        {
+          "pin": "SCL_CLK",
+          "esp32": "GPIO12"
+        },
+        {
+          "pin": "SDA_DIN",
+          "esp32": "GPIO11"
+        },
+        {
+          "pin": "CS",
+          "esp32": "GPIO10"
+        },
+        {
+          "pin": "DC_A0",
+          "esp32": "GPIO8"
+        },
+        {
+          "pin": "RES_RST",
+          "esp32": "GPIO9"
+        },
+        {
+          "pin": "BL_LED",
+          "esp32": "GPIO7"
+        }
+      ],
+      "firmware": {
+        "library": "U8g2",
+        "candidateConstructors": [
+          "U8G2_ST7567_OS12864_F_4W_HW_SPI",
+          "U8G2_ST7567_ENH_DG128064I_F_4W_HW_SPI"
+        ],
+        "notes": [
+          "Exact U8g2 constructor must be verified after receiving the LCD module.",
+          "Display orientation, contrast, and inversion may need adjustment."
+        ]
+      }
+    },
+    {
+      "id": "pressure_sensor",
+      "type": "pressure_temperature_sensor",
+      "name": "MS5837-30BA",
+      "required": true,
+      "interface": "i2c",
+      "i2cAddressExpected": "0x76",
+      "power": {
+        "vcc": "3V3",
+        "logicVoltage": 3.3
+      },
+      "connections": [
+        {
+          "pin": "VCC",
+          "net": "3V3"
+        },
+        {
+          "pin": "GND",
+          "net": "GND"
+        },
+        {
+          "pin": "SDA",
+          "esp32": "GPIO5"
+        },
+        {
+          "pin": "SCL",
+          "esp32": "GPIO6"
+        }
+      ],
+      "notes": [
+        "Used for depth and water temperature measurement.",
+        "Breakout board itself must not be directly exposed to water.",
+        "Sensor pressure port and sealing structure must be validated."
+      ]
+    },
+    {
+      "id": "gps",
+      "type": "gps_module",
+      "name": "Drone GPS Module",
+      "required": true,
+      "interface": "uart",
+      "power": {
+        "vcc": "switched_5v",
+        "logicVoltageExpected": 3.3
+      },
+      "connections": [
+        {
+          "pin": "VCC",
+          "net": "SWITCHED_5V_GPS"
+        },
+        {
+          "pin": "GND",
+          "net": "GND"
+        },
+        {
+          "pin": "TX",
+          "esp32": "GPIO16",
+          "description": "GPS TX to ESP32 RX"
+        },
+        {
+          "pin": "RX",
+          "esp32": "GPIO15",
+          "description": "GPS RX to ESP32 TX"
+        },
+        {
+          "pin": "SCL",
+          "esp32": null,
+          "description": "Compass I2C SCL, not connected in initial prototype"
+        },
+        {
+          "pin": "SDA",
+          "esp32": null,
+          "description": "Compass I2C SDA, not connected in initial prototype"
+        }
+      ],
+      "uart": {
+        "baudCandidates": [
+          9600,
+          115200
+        ],
+        "selectedBaud": 115200,
+        "notes": [
+          "Actual default baud rate must be verified.",
+          "Many GPS modules default to 9600 baud."
+        ]
+      },
+      "backupBatteryPolicy": {
+        "useCoinCell": false,
+        "useAlwaysOnVbatFrom3v3": false,
+        "policy": "Allow GPS cold start. Do not feed GPS VBAT from always-on 3.3V because of standby current concerns."
+      },
+      "powerControl": {
+        "recommended": true,
+        "controlPin": "GPIO14",
+        "method": "load_switch_or_mosfet",
+        "policy": "Turn GPS on only when surface position fix is needed, then turn it off."
+      }
+    },
+    {
+      "id": "buzzer",
+      "type": "piezo_disc",
+      "name": "12mm Piezo Disc",
+      "required": true,
+      "interface": "gpio_pwm_tone",
+      "connections": [
+        {
+          "pin": "signal",
+          "esp32": "GPIO4"
+        },
+        {
+          "pin": "gnd",
+          "net": "GND"
+        }
+      ],
+      "recommendedSeriesResistorOhm": {
+        "min": 100,
+        "max": 330
+      },
+      "mechanicalMounting": {
+        "target": "action_camera_diving_housing_wall",
+        "purpose": "Use housing wall as acoustic resonator"
+      },
+      "notes": [
+        "Underwater and sealed housing acoustic performance must be tested.",
+        "If sound is too weak, consider transistor driver or dedicated buzzer driver."
+      ]
+    },
+    {
+      "id": "battery",
+      "type": "li_ion_cell",
+      "name": "Protected 16340 Li-ion",
+      "required": true,
+      "nominalVoltage": 3.7,
+      "fullChargeVoltage": 4.2,
+      "recommendedCapacityMah": {
+        "min": 650,
+        "max": 950
+      },
+      "protectionRequired": true,
+      "notes": [
+        "Use protected 16340 cell with over-charge, over-discharge, over-current, and short-circuit protection.",
+        "Protection PCB is not a charger.",
+        "A proper CC/CV 4.2V Li-ion charger is still required.",
+        "Do not solder directly to the cell.",
+        "Protected 16340 cells may be longer than unprotected cells; verify holder fit."
+      ]
+    },
+    {
+      "id": "wireless_charger",
+      "type": "qi_receiver_or_wireless_charging_module",
+      "name": "Wireless Charging Receiver Module",
+      "required": true,
+      "status": "to_be_verified",
+      "expectedOutputVoltage": 5.0,
+      "notes": [
+        "Some 4-terminal boards may include battery charging function.",
+        "Verify whether the module is only a 5V receiver or includes Li-ion CC/CV charging.",
+        "Verify charge termination voltage, system output behavior, and compatibility with protected 16340 cell."
+      ]
+    },
+    {
+      "id": "charger",
+      "type": "li_ion_charger_or_power_path_module",
+      "name": "Li-ion Charger / Power Module",
+      "required": true,
+      "status": "to_be_selected_or_verified",
+      "input": "5V from wireless charger receiver",
+      "output": "battery and system power",
+      "notes": [
+        "If wireless charging board already includes proper Li-ion charging, a separate charger may not be required.",
+        "If not, add a proper Li-ion CC/CV charger module.",
+        "Power-path or load-sharing support is preferred to prevent device reset during charging or battery protection events."
+      ]
+    },
+    {
+      "id": "enclosure",
+      "type": "housing",
+      "name": "Action Camera Diving Housing",
+      "required": true,
+      "status": "to_be_verified",
+      "notes": [
+        "Verify internal fit.",
+        "Verify wireless charging through housing wall.",
+        "Verify piezo acoustic output through housing wall.",
+        "Verify pressure sensor port and sealing.",
+        "Perform pressure and waterproof testing."
+      ]
+    }
+  ],
+  "nets": [
+    {
+      "name": "I2C_SDA",
+      "esp32": "GPIO5",
+      "members": [
+        "pressure_sensor.SDA"
+      ],
+      "notes": [
+        "Can be shared with other I2C devices if needed."
+      ]
+    },
+    {
+      "name": "I2C_SCL",
+      "esp32": "GPIO6",
+      "members": [
+        "pressure_sensor.SCL"
+      ],
+      "notes": [
+        "Can be shared with other I2C devices if needed."
+      ]
+    },
+    {
+      "name": "LCD_SPI",
+      "members": [
+        "lcd.SCL_CLK",
+        "lcd.SDA_DIN",
+        "lcd.CS",
+        "lcd.DC_A0",
+        "lcd.RES_RST",
+        "lcd.BL_LED"
+      ],
+      "notes": [
+        "LCD is SPI, not I2C."
+      ]
+    },
+    {
+      "name": "GPS_UART",
+      "members": [
+        "gps.TX",
+        "gps.RX"
+      ],
+      "notes": [
+        "GPS TX connects to ESP32 RX GPIO16.",
+        "GPS RX connects to ESP32 TX GPIO15."
+      ]
+    }
+  ],
+  "wiringTable": [
+    {
+      "from": "lcd.GND",
+      "to": "GND"
+    },
+    {
+      "from": "lcd.VCC",
+      "to": "3V3"
+    },
+    {
+      "from": "lcd.SCL_CLK",
+      "to": "GPIO12"
+    },
+    {
+      "from": "lcd.SDA_DIN",
+      "to": "GPIO11"
+    },
+    {
+      "from": "lcd.CS",
+      "to": "GPIO10"
+    },
+    {
+      "from": "lcd.DC_A0",
+      "to": "GPIO8"
+    },
+    {
+      "from": "lcd.RES_RST",
+      "to": "GPIO9"
+    },
+    {
+      "from": "lcd.BL_LED",
+      "to": "GPIO7"
+    },
+    {
+      "from": "pressure_sensor.VCC",
+      "to": "3V3"
+    },
+    {
+      "from": "pressure_sensor.GND",
+      "to": "GND"
+    },
+    {
+      "from": "pressure_sensor.SDA",
+      "to": "GPIO5"
+    },
+    {
+      "from": "pressure_sensor.SCL",
+      "to": "GPIO6"
+    },
+    {
+      "from": "gps.VCC",
+      "to": "SWITCHED_5V_GPS"
+    },
+    {
+      "from": "gps.GND",
+      "to": "GND"
+    },
+    {
+      "from": "gps.TX",
+      "to": "GPIO16"
+    },
+    {
+      "from": "gps.RX",
+      "to": "GPIO15"
+    },
+    {
+      "from": "gps.SCL",
+      "to": "NC"
+    },
+    {
+      "from": "gps.SDA",
+      "to": "NC"
+    },
+    {
+      "from": "buzzer.signal",
+      "to": "GPIO4"
+    },
+    {
+      "from": "buzzer.gnd",
+      "to": "GND"
+    },
+    {
+      "from": "wireless_charger.5V_DETECT",
+      "to": "GPIO2_THROUGH_VOLTAGE_DIVIDER",
+      "required": false
+    },
+    {
+      "from": "battery.positive",
+      "to": "GPIO1_THROUGH_VOLTAGE_DIVIDER",
+      "required": false
+    },
+    {
+      "from": "gps_load_switch.EN",
+      "to": "GPIO14",
+      "required": false
+    }
+  ],
+  "voltageDividers": [
+    {
+      "id": "qi_detect_divider",
+      "input": "wireless_charger_5v",
+      "output": "GPIO2",
+      "required": false,
+      "example": {
+        "rHighOhm": 100000,
+        "rLowOhm": 200000,
+        "inputVoltage": 5.0,
+        "outputVoltageApprox": 3.33
+      },
+      "notes": [
+        "Use divider because ESP32 GPIO is not 5V tolerant."
+      ]
+    },
+    {
+      "id": "battery_adc_divider",
+      "input": "battery_positive",
+      "output": "GPIO1",
+      "required": false,
+      "example": {
+        "rHighOhm": 200000,
+        "rLowOhm": 100000,
+        "inputVoltageMax": 4.2,
+        "outputVoltageApproxAtMax": 1.4
+      },
+      "notes": [
+        "Divider ratio is approximately 1/3.",
+        "Consider switching the divider off during sleep to reduce standby current."
+      ]
+    }
+  ],
+  "pinsToAvoid": [
+    {
+      "pin": "GPIO0",
+      "reason": "BOOT / download mode related"
+    },
+    {
+      "pin": "GPIO3",
+      "reason": "Strapping pin"
+    },
+    {
+      "pin": "GPIO19",
+      "reason": "USB D-"
+    },
+    {
+      "pin": "GPIO20",
+      "reason": "USB D+"
+    },
+    {
+      "pin": "GPIO43",
+      "reason": "UART0 TX / logging or programming conflict"
+    },
+    {
+      "pin": "GPIO44",
+      "reason": "UART0 RX / logging or programming conflict"
+    },
+    {
+      "pin": "GPIO45",
+      "reason": "Strapping pin"
+    },
+    {
+      "pin": "GPIO46",
+      "reason": "Strapping pin / limited use"
+    },
+    {
+      "pin": "GPIO47",
+      "reason": "Board-dependent RGB LED or special function"
+    },
+    {
+      "pin": "GPIO48",
+      "reason": "Board-dependent RGB LED or special function"
+    }
+  ],
+  "simulation": {
+    "wokwi": {
+      "currentDisplay": "SSD1306 I2C OLED",
+      "realPrototypeDisplay": "ST7567A SPI LCD",
+      "notes": [
+        "Wokwi simulation may not exactly match the real prototype display.",
+        "Wokwi currently uses I2C OLED, while real prototype uses SPI LCD.",
+        "Pin map difference must be documented to avoid confusion."
+      ]
+    }
+  },
+  "openQuestions": [
+    {
+      "topic": "LCD",
+      "items": [
+        "Does the ST7567A module work reliably at 3.3V?",
+        "Does the backlight pin include a current-limiting resistor?",
+        "Which U8g2 constructor matches this module?",
+        "Is display inversion or rotation required?"
+      ]
+    },
+    {
+      "topic": "Pressure Sensor",
+      "items": [
+        "What is the actual I2C address of the MS5837 module?",
+        "Are the I2C pull-ups connected to 3.3V?",
+        "How will the pressure port be sealed?"
+      ]
+    },
+    {
+      "topic": "GPS",
+      "items": [
+        "Is GPS UART logic level 3.3V?",
+        "What is the default baud rate?",
+        "How long does cold start take without coin-cell backup?",
+        "Does power cycling through load switch work reliably?"
+      ]
+    },
+    {
+      "topic": "Charging",
+      "items": [
+        "Is the wireless charging board a 5V receiver only or does it include Li-ion charging?",
+        "What is the charge termination voltage?",
+        "Does system output remain stable during charging?",
+        "Does it support power-path or load sharing?"
+      ]
+    },
+    {
+      "topic": "Battery",
+      "items": [
+        "Does the protected 16340 physically fit the holder and housing?",
+        "What is the real capacity?",
+        "What is the actual sleep current?"
+      ]
+    },
+    {
+      "topic": "Enclosure",
+      "items": [
+        "Can all parts fit inside the action camera housing?",
+        "Can wireless charging work through the housing?",
+        "Is the piezo sound loud enough through the housing?",
+        "Can the pressure sensor be exposed to pressure while electronics remain sealed?"
+      ]
+    }
+  ],
+  "firmwareDefines": {
+    "PIN_LCD_SCLK": 12,
+    "PIN_LCD_MOSI": 11,
+    "PIN_LCD_CS": 10,
+    "PIN_LCD_DC": 8,
+    "PIN_LCD_RST": 9,
+    "PIN_LCD_BL": 7,
+    "PIN_I2C_SDA": 5,
+    "PIN_I2C_SCL": 6,
+    "PIN_BUZZER": 4,
+    "PIN_GPS_RX": 16,
+    "PIN_GPS_TX": 15,
+    "PIN_QI_DETECT": 2,
+    "PIN_BATTERY_ADC": 1,
+    "PIN_GPS_EN": 14
+  },
+  "nextSteps": [
+    "Add this file as docs/HARDWARE_PROTOTYPE.json.",
+    "Add human-readable documentation as docs/HARDWARE_PROTOTYPE.md.",
+    "Reference both files from README.md.",
+    "Update CHANGELOG.md.",
+    "After parts arrive, verify each open question and update this JSON.",
+    "Consider generating include/hardware_pins.h from firmwareDefines in the future."
+  ]
+}

@@ -57,6 +57,10 @@ profile pause
 profile resume
 ```
 
+## Hardware Prototype
+
+- [Hardware Prototype Specification](docs/HARDWARE_PROTOTYPE.md)
+- [Hardware Prototype JSON Definition](docs/HARDWARE_PROTOTYPE.json)
 
 
 ## Status

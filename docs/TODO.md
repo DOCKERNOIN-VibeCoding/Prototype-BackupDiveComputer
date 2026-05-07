@@ -829,4 +829,15 @@ DECO.STOP은 전체 DecoPlan 표를 보여주지 않는다.
 재입수 시 DECO.STOP 계산을 계속 제공한다.
 단, 48시간 advisory와 위반 이력은 유지한다.
 ```
-```
+
+
+## Hardware Prototype
+
+- [x] Add `docs/HARDWARE_PROTOTYPE.md`.
+- [x] Add `docs/HARDWARE_PROTOTYPE.json`.
+- [ ] Verify ST7567A LCD pinout after receiving the module.
+- [ ] Verify MS5837 I2C address and pull-up voltage.
+- [ ] Verify GPS baud rate and cold-start behavior without coin-cell backup.
+- [ ] Verify wireless charging board charge termination and power-path behavior.
+- [ ] Verify protected 16340 battery fit and actual capacity.
+- [ ] Measure sleep current with GPS and LCD backlight off.

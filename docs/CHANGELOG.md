@@ -534,3 +534,10 @@ old dev/v7.3      → dev/v1.3
 git push origin --delete dev/v7.3
 ```
 
+## Unreleased
+
+### Added
+- Add `docs/HARDWARE_PROTOTYPE.md` to document the real prototype hardware specification, ESP32-S3 pin map, ST7567A SPI LCD wiring, MS5837 wiring, GPS wiring, battery/charging policy, and open hardware validation items.
+- Add `docs/HARDWARE_PROTOTYPE.json` for machine-readable hardware pin map, wiring table, components, power rails, and validation checklist.
+
+```
