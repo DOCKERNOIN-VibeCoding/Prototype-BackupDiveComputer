@@ -241,6 +241,154 @@ Subsurface XML도 dive date/time을 다이빙 시작 시각으로 기록한다.
 다이빙 종료 시각은 시작 시각 + 다이빙 시간으로 계산 가능하다.
 ```
 
+## 4.4 2026-05-07 기준 추가 구현 상태
+
+현재 `dev/v1.3` 브랜치에는 v1.3 핵심 정책 중 일부가 코드로 반영되었다.
+
+### Gas / FO2
+
+`include/config.h`에 Air / Nitrox-ready 단일 gas 설정이 추가되었다.
+
+현재 기본값:
+
+```text
+FO2 = 21%
+ppO2 max = 1.4 bar
+FO2 range = 21% ~ 40%
+```
+
+기본 gas는 Air / EAN21이다.
+
+중요:
+
+```text
+Air는 EAN21이다.
+EAN32는 Air가 아니다.
+Bühlmann 계산에서 FN2를 하드코딩하지 않고 FO2에서 계산한다.
+```
+
+### Bühlmann FN2 연결
+
+`src/buhlmann.cpp`는 기존의 고정 질소 비율 대신 다음 helper를 사용한다.
+
+```text
+getGasFO2()
+getGasFN2()
+```
+
+이제 tissue loading, NDL, GF99, deco calculation, no-fly calculation에서 FO2 기반 FN2를 사용한다.
+
+### MOD / ppO2 helper
+
+다음 helper가 추가되었다.
+
+```text
+calculateMODMeters()
+calculatePpO2Bar(depthM)
+```
+
+현재는 helper와 구조가 준비된 상태이며, FO2 >21%일 때 MOD를 dive UI에 상시 표시하는 작업은 다음 단계로 남아 있다.
+
+### DECO.STOP ladder
+
+v1.3 DECO.STOP ladder가 추가되었다.
+
+```text
+18m -> 15m -> 12m -> 9m -> 6m -> 3m
+```
+
+raw ceiling은 이 ladder 중 현재 필요한 stop으로 매핑된다.
+
+raw ceiling이 18m보다 깊은 경우에는 18m stop으로 거짓 안내하지 않고 다음과 같이 표시한다.
+
+```text
+CEIL >18m
+HOLD DEPTH
+```
+
+### DECO UI
+
+DECO.STOP 행동 지시는 다음으로 정리되었다.
+
+```text
+ASCEND
+HOLD
+DESCEND
+```
+
+화살표는 Unicode 문자가 아니라 `u8g2.drawTriangle()`으로 직접 그린다.
+
+이유:
+
+```text
+실제 예정 하드웨어는 font chip이 없는 ST7567 계열 그래픽 LCD일 수 있으므로,
+특수문자나 Unicode 표시를 신뢰하지 않는다.
+```
+
+### 알람 / 비프
+
+현재 비프 호출 정책:
+
+```text
+LOW BATTERY 표시 시 짧게 1회
+빠른 상승 위험 시 3회 연속 경고
+```
+
+LOW BATTERY 팝업 주기:
+
+```text
+10분마다 2초 표시
+```
+
+Wokwi 테스트 명령:
+
+```text
+beep test
+```
+
+# 4.5 현재 기준 다음 개발 단계
+
+우선순위는 아래 순서가 좋습니다.
+
+1. **빌드 확인**
+   - `pio run -e wokwi`
+   - 또는 VS Code PlatformIO Build 버튼 사용
+
+2. **UI 확인**
+   - DECO 상태에서 `ASCEND`, `DESCEND`, `HOLD` 표시 확인
+   - `CEIL >18m` 표시 확인
+   - 화살표 삼각형이 깨지지 않는지 확인
+
+3. **Buzzer 확인**
+   - Wokwi serial monitor에서:
+     ```text
+     beep test
+     ```
+   - 결과 : 테스트 완료. Wokwi 버저 정상 작동됨.
+
+4. **MOD 표시 구현**
+   - FO2 > 21%일 때 dive 화면에 `EAN32`, `MOD 33m` 같은 표시 추가
+
+5. **MOD 초과 경고 구현**
+   - 현재 수심이 MOD보다 깊으면:
+     ```text
+     PPO2 HIGH
+     ASCEND
+     ```
+
+6. **missed deco / 48h advisory 상태 머신 구현**
+   - `activeDecoViolation`
+   - `postViolationAdvisory`
+   - `advisoryEndEpochSec`
+   - Surface 화면에 `MISSED DECO / NO DIVE 48H`
+
+7. **re-entry tissue state 처리 검증**
+   - 감압 위반 후 재입수해도 hard lockout 하지 않음
+   - tissue state 유지
+   - DECO.STOP 재계산 계속
+
+---
+
 ---
 
 # 5. v1.2에서 도입된 epoch 기반 Surface 계산
