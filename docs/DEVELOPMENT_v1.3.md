@@ -1,7 +1,7 @@
-# BackupDiveComputer_v1.2 개발 정의서
+# BackupDiveComputer_v1.3 개발 정의서
 
 ---
-이 문서는 BackupDiveComputer_v1.2의 개발 방향, 현재 구현 상태, 앞으로 구현할 내용을 정리한 문서이다.
+이 문서는 BackupDiveComputer_v1.3의 개발 방향, 현재 구현 상태, 앞으로 구현할 내용을 정리한 문서이다.
 
 코딩 경험이 없는 초심자도 이해할 수 있도록 가능한 한 쉬운 표현을 사용한다.
 ---
@@ -18,7 +18,7 @@ BackupDiveComputer
 ## 1.2 현재 개발 브랜치
 
 ```text
-dev/v1.2
+dev/v1.3
 ```
 
 ## 1.3 프로젝트 목표
@@ -160,7 +160,7 @@ Subsurface XML도 dive date/time을 다이빙 시작 시각으로 기록한다.
 
 ---
 
-# 5. v1.2의 가장 중요한 변경점
+# 5. v1.3의 가장 중요한 변경점
 
 ## 5.1 기존 방식의 문제
 
@@ -181,7 +181,7 @@ Subsurface XML도 dive date/time을 다이빙 시작 시각으로 기록한다.
 
 ## 5.2 새로운 방식
 
-v1.2에서는 실제 제품 방식에 맞게 epoch 기반으로 계산한다.
+v1.3에서는 실제 제품 방식에 맞게 epoch 기반으로 계산한다.
 
 저장하는 값:
 
@@ -881,19 +881,19 @@ git status
 수정된 파일 확인 후:
 
 ```bash
-git add docs/CHANGELOG.md docs/CHAT_CONTEXT_v1.2.md docs/DEVELOPMENT_v1.2.md docs/TODO.md
+git add docs/CHANGELOG.md docs/CHAT_CONTEXT_v1.3.md docs/DEVELOPMENT_v1.3.md docs/TODO.md
 ```
 
 커밋:
 
 ```bash
-git commit -m "Update v1.2 development documents"
+git commit -m "Update v1.3 development documents"
 ```
 
 푸시:
 
 ```bash
-git push origin dev/v1.2
+git push origin dev/v1.3
 ```
 
 ---
@@ -938,9 +938,9 @@ Light Sleep 전력 측정
 
 ---
 
-# 21. v1.2 완료 기준
+# 21. v1.3 완료 기준
 
-v1.2 1차 완료 기준:
+v1.3 1차 완료 기준:
 
 ```text
 Wokwi 빌드 성공
@@ -958,7 +958,7 @@ JSON preload 정상
 generated_scenario.h 자동 생성 정상
 ```
 
-v1.2 확장 완료 기준:
+v1.3 확장 완료 기준:
 
 ```text
 Compact log format 초안 추가
@@ -973,7 +973,7 @@ timeSessionId 설계 반영
 
 # 22. 최종 방향 요약
 
-BackupDiveComputer_v1.2는 단순히 화면을 바꾸는 버전이 아니다.
+BackupDiveComputer_v1.3는 단순히 화면을 바꾸는 버전이 아니다.
 
 핵심은 다음이다.
 
@@ -1412,3 +1412,185 @@ DECO.STOP ladder remains:
 - 9m
 - 6m
 - 3m
+
+```
+
+## Recreational Single-Gas Air/Nitrox-Ready Policy
+
+BackupDiveComputer is a recreational backup dive computer, not a technical dive
+computer.
+
+The device shall support only a single active breathing gas for decompression
+calculation.
+
+Supported gas model:
+
+- Air / EAN21
+- Nitrox / EANx structure for future support
+- Single gas only
+
+Unsupported:
+
+- multi-gas switching
+- double tank gas management
+- trimix
+- helium
+- CCR
+- bailout gas
+- deco gas switching
+
+### Default Gas
+
+The default gas shall be Air / EAN21.
+
+In firmware configuration, the oxygen fraction shall be defined as a configurable
+value, initially fixed to 21%.
+
+Example:
+
+```cpp
+#define DIVE_GAS_FO2_PERCENT 21
+#define DIVE_GAS_PPO2_MAX_BAR 1.40f
+#define DIVE_GAS_FO2_MIN_PERCENT 21
+#define DIVE_GAS_FO2_MAX_PERCENT 40
+```
+
+`DIVE_GAS_FO2_PERCENT` represents the oxygen fraction percentage, not oxygen
+partial pressure.
+
+For Air / EAN21:
+
+```text
+FO2 = 0.21
+FN2 = 0.79
+```
+
+For future EAN32:
+
+```text
+FO2 = 0.32
+FN2 = 0.68
+```
+
+The Bühlmann decompression calculation shall not hardcode nitrogen fraction.
+Instead, it shall read the configured FO2 value and calculate FN2 from it.
+
+```cpp
+float fo2 = DIVE_GAS_FO2_PERCENT / 100.0f;
+float fn2 = 1.0f - fo2;
+```
+
+The calculated `fn2` shall be used for:
+
+- tissue nitrogen loading
+- NDL calculation
+- decompression ceiling calculation
+- DECO.STOP duration calculation
+- surface interval residual nitrogen calculation
+
+### Nitrox Future-Ready Structure
+
+Nitrox does not need to be user-configurable in the current firmware stage because
+the device has no buttons and no mobile app yet.
+
+However, the firmware shall be structured so that FO2 can later be changed by a
+mobile app and stored in non-volatile settings.
+
+Initial stage:
+
+- FO2 is defined in `config.h`
+- default FO2 is 21%
+- simulation scenarios may override FO2 for testing
+
+Future stage:
+
+- FO2 is configured from the mobile app
+- FO2 is stored in NVS / Preferences
+- dive logs store FO2 used for each dive
+- Subsurface XML export includes gas information
+
+### MOD Display Policy
+
+MOD means Maximum Operating Depth.
+
+MOD shall be calculated from configured FO2 and maximum allowed oxygen partial
+pressure.
+
+The project shall use:
+
+```text
+max ppO2 = 1.4 bar
+```
+
+MOD calculation:
+
+```text
+MOD(m) = ((max_ppO2 / FO2) - 1.0) * 10
+```
+
+Example for EAN32:
+
+```text
+FO2 = 0.32
+max ppO2 = 1.4 bar
+
+MOD = ((1.4 / 0.32) - 1.0) * 10
+MOD ≈ 33.7m
+```
+
+If configured FO2 is greater than 21%, the dive screen shall always display MOD
+during the dive.
+
+Example:
+
+```text
+EAN32
+MOD 33m
+```
+
+For Air / EAN21, MOD display may be hidden or deprioritized because the MOD at
+ppO2 1.4 is deeper than the normal recreational range.
+
+If the current depth exceeds the calculated MOD, the device shall show a high
+priority warning.
+
+Example:
+
+```text
+PPO2 HIGH
+ASCEND
+```
+
+or
+
+```text
+MOD EXCEEDED
+ASCEND
+```
+
+The MOD warning shall not disable depth, time, ascent-rate, NDL, or DECO.STOP
+functions.
+
+### Relationship to DECO.STOP
+
+The DECO.STOP ladder remains:
+
+- 18m
+- 15m
+- 12m
+- 9m
+- 6m
+- 3m
+
+The stop depths are selected from this ladder, but stop durations shall be calculated
+from real-time tissue nitrogen loading.
+
+Because tissue loading depends on FN2, future Nitrox settings must directly affect:
+
+- NDL
+- decompression ceiling
+- selected DECO.STOP
+- DECO.STOP duration
+- no-fly / desaturation calculations
+```
+
