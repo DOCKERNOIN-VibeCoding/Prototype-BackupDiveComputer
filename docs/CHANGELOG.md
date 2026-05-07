@@ -303,6 +303,213 @@ timeSessionId based log correction
 
 ## v1.3 - Current
 
+
+```md
+### 2026-05-07
+
+#### FO2 기반 gas 설정 및 Nitrox-ready 구조 추가
+
+v1.3에서 기본 gas를 Air / EAN21로 명확히 정의하고, 향후 Nitrox 지원을 위한 FO2 기반 구조를 코드에 반영했다.
+
+적용 내용:
+
+```text
+DIVE_GAS_FO2_PERCENT = 21
+DIVE_GAS_PPO2_MAX_BAR = 1.40f
+DIVE_GAS_FO2_MIN_PERCENT = 21
+DIVE_GAS_FO2_MAX_PERCENT = 40
+```
+
+중요 정책:
+
+```text
+Air = EAN21
+EAN32는 Air가 아님
+Bühlmann 계산에서 FN2를 하드코딩하지 않음
+config.h의 FO2에서 FN2를 계산해 사용
+```
+
+수정 파일:
+
+```text
+include/config.h
+include/buhlmann.h
+src/buhlmann.cpp
+```
+
+---
+
+#### Bühlmann FN2 하드코딩 제거
+
+기존 Bühlmann 계산에서 사용하던 질소 비율 하드코딩 값을 제거하고, `DIVE_GAS_FO2_PERCENT`에서 계산한 FN2를 사용하도록 변경했다.
+
+적용된 helper:
+
+```text
+getGasFO2()
+getGasFN2()
+calculateMODMeters()
+calculatePpO2Bar(depthM)
+```
+
+적용 범위:
+
+```text
+tissue nitrogen loading
+NDL calculation
+GF99 calculation
+decompression calculation
+No-Fly calculation
+```
+
+---
+
+#### DECO.STOP ladder 및 CEIL >18m 처리 추가
+
+v1.3 DECO.STOP ladder를 코드에 반영했다.
+
+지원 ladder:
+
+```text
+18m -> 15m -> 12m -> 9m -> 6m -> 3m
+```
+
+raw ceiling이 18m보다 깊은 경우에는 18m stop으로 잘못 안내하지 않고 별도 경고 상태로 처리한다.
+
+표시 정책:
+
+```text
+CEIL >18m
+HOLD DEPTH
+```
+
+수정 파일:
+
+```text
+include/config.h
+include/buhlmann.h
+src/buhlmann.cpp
+include/app.h
+src/app.cpp
+include/ui.h
+src/ui.cpp
+```
+
+---
+
+#### DECO.STOP 행동 지시 UI 개선
+
+기존 `TOO SHALLOW` 표시를 제거하고, 더 직관적인 행동 지시로 변경했다.
+
+새 표시:
+
+```text
+ASCEND
+DESCEND
+HOLD
+```
+
+화살표는 Unicode 문자를 사용하지 않고 `u8g2.drawTriangle()`로 직접 그린다.
+
+이유:
+
+```text
+실제 예정 LCD/ST7567 계열 그래픽 LCD는 font chip이 없을 수 있음
+Unicode 화살표가 폰트에 따라 표시되지 않을 수 있음
+따라서 ASCII 텍스트 + 직접 그린 삼각형 아이콘을 사용
+```
+
+---
+
+#### 배터리 경고 및 비프 정책 수정
+
+LOW BATTERY 팝업 주기를 2분에서 10분으로 변경했다.
+
+```text
+기존: 2분마다 2초 표시
+변경: 10분마다 2초 표시
+```
+
+적용 값:
+
+```text
+BATTERY_LOW_POPUP_INTERVAL_MS = 600000UL
+BATTERY_LOW_POPUP_DURATION_MS = 2000UL
+```
+
+LOW BATTERY 표시 시 짧은 비프 1회를 호출하도록 변경했다.
+
+```text
+ALARM_FREQ_BATTERY_LOW = 900
+beep(ALARM_FREQ_BATTERY_LOW, 80)
+```
+
+---
+
+#### 빠른 상승 경고 비프 3회 적용
+
+상승 속도가 위험 기준 이상일 때 단일 비프 대신 3회 연속 경고음을 호출하도록 변경했다.
+
+정책:
+
+```text
+18m/min 이상 빠른 상승 시
+삐-삐-삐 3회 경고
+```
+
+관련 함수:
+
+```text
+beepTripleWarning()
+```
+
+---
+
+#### Wokwi buzzer 테스트 및 Serial Monitor 설정 개선
+
+Wokwi 시뮬레이션에서 buzzer 테스트를 위해 mock command를 추가했다.
+
+새 명령:
+
+```text
+beep test
+```
+
+예상 출력:
+
+```text
+[MOCK_BUZZER] beep test
+```
+
+또한 Wokwi serial monitor 입력을 쉽게 하기 위해 `platformio.ini`에 monitor port를 추가했다.
+
+```ini
+monitor_port = rfc2217://localhost:4000
+```
+
+Wokwi buzzer 설정도 `smooth` mode로 정리했다.
+
+수정 파일:
+
+```text
+src/mock_services.cpp
+diagram.json
+platformio.ini
+```
+
+---
+
+#### 현재 남은 확인 사항
+
+```text
+로컬 환경에서 pio run -e wokwi 빌드 확인 필요
+Wokwi/VS Code 환경에서 buzzer 실제 음성 출력 확인 필요 (DONE. 정상출력 확인 완료!)
+missed deco / re-entry / 48h advisory 상태 머신 및 로그 이벤트는 추가 구현 필요
+```
+```
+
+
+
 ### Version renaming policy
 
 기존 개발 중 v7.x 형태로 사용하던 버전명을 v1.x 체계로 재정리한다.

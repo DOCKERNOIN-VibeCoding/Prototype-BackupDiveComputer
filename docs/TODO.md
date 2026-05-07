@@ -158,11 +158,11 @@ BackupDiveComputer는 테크니컬 다이빙 컴퓨터가 아니라 레크리에
 
 작업 항목:
 
-- [ ] `include/config.h`에 gas 설정 상수 추가
-  - [ ] `DIVE_GAS_FO2_PERCENT`
-  - [ ] `DIVE_GAS_PPO2_MAX_BAR`
-  - [ ] `DIVE_GAS_FO2_MIN_PERCENT`
-  - [ ] `DIVE_GAS_FO2_MAX_PERCENT`
+- [x] `include/config.h`에 gas 설정 상수 추가
+  - [x] `DIVE_GAS_FO2_PERCENT`
+  - [x] `DIVE_GAS_PPO2_MAX_BAR`
+  - [x] `DIVE_GAS_FO2_MIN_PERCENT`
+  - [x] `DIVE_GAS_FO2_MAX_PERCENT`
 
 권장 기본값:
 
@@ -173,16 +173,16 @@ BackupDiveComputer는 테크니컬 다이빙 컴퓨터가 아니라 레크리에
 #define DIVE_GAS_FO2_MAX_PERCENT 40
 ```
 
-- [ ] 기본 gas를 Air / EAN21로 설정
-  - [ ] FO2 = 21%
-  - [ ] FN2 = 79%
+- [x] 기본 gas를 Air / EAN21로 설정
+  - [x] FO2 = 21%
+  - [x] FN2 = 79%
 
-- [ ] `DIVE_GAS_FO2_PERCENT`가 산소분압이 아니라 산소분율임을 주석에 명시
-- [ ] EAN32는 Air가 아니라 산소 32% Nitrox임을 문서에 명시
-- [ ] FO2 값 유효 범위 검사 구조 추가
-  - [ ] 최소 21%
-  - [ ] 최대 40%
-- [ ] 현재 단계에서는 compile-time 설정 사용
+- [x] `DIVE_GAS_FO2_PERCENT`가 산소분압이 아니라 산소분율임을 주석에 명시
+- [x] EAN32는 Air가 아니라 산소 32% Nitrox임을 문서에 명시
+- [x] FO2 값 유효 범위 검사 구조 추가
+  - [x] 최소 21%
+  - [x] 최대 40%
+- [x] 현재 단계에서는 compile-time 설정 사용
 - [ ] 향후 앱 설정을 위한 NVS / Preferences 저장 구조 예약
 - [ ] 향후 앱에서 FO2 변경 가능하도록 구조 설계
 - [ ] gas label helper 추가 검토
@@ -208,8 +208,8 @@ config.h의 FO2를 읽고 FN2를 계산해 사용한다.
 
 작업 항목:
 
-- [ ] Bühlmann 계산 모듈에서 FO2 값을 config에서 읽도록 구조 설계
-- [ ] FN2 계산 helper 추가
+- [x] Bühlmann 계산 모듈에서 FO2 값을 config에서 읽도록 구조 설계
+- [x] FN2 계산 helper 추가
 
 예상 코드:
 
@@ -218,12 +218,12 @@ float fo2 = DIVE_GAS_FO2_PERCENT / 100.0f;
 float fn2 = 1.0f - fo2;
 ```
 
-- [ ] tissue nitrogen loading 계산에 FN2 적용
-- [ ] NDL 계산에 FN2 적용
-- [ ] decompression ceiling 계산에 FN2 적용
-- [ ] DECO.STOP duration 계산에 FN2 적용
-- [ ] surface interval residual nitrogen 계산에 FN2 적용
-- [ ] No-Fly / desaturation 계산에 gas 설정 영향 검토
+- [x] tissue nitrogen loading 계산에 FN2 적용
+- [x] NDL 계산에 FN2 적용
+- [x] decompression ceiling 계산에 FN2 적용
+- [x] DECO.STOP duration 계산에 FN2 적용
+- [x] surface interval residual nitrogen 계산에 FN2 적용
+- [x] No-Fly / desaturation 계산에 gas 설정 영향 검토
 - [ ] Air / EAN21 기준 테스트 작성
 - [ ] EAN32 기준 테스트 작성
 - [ ] 같은 프로파일에서 EAN21과 EAN32의 NDL 차이가 발생하는지 검증
@@ -257,8 +257,8 @@ MOD ≈ 33.7m
 
 작업 항목:
 
-- [ ] MOD 계산 helper 추가
-- [ ] ppO2 계산 helper 추가
+- [x] MOD 계산 helper 추가
+- [x] ppO2 계산 helper 추가
 
 예상 코드:
 
@@ -267,7 +267,7 @@ float calculateMODMeters(float fo2, float ppO2MaxBar);
 float calculatePpO2Bar(float fo2, float depthM);
 ```
 
-- [ ] 기본 ppO2 max를 1.4 bar로 설정
+- [x] 기본 ppO2 max를 1.4 bar로 설정
 - [ ] FO2 > 21%일 경우 다이빙 중 MOD 상시 표시
 - [ ] FO2 = 21%일 경우 MOD 표시 생략 또는 낮은 우선순위로 처리
 - [ ] 현재 수심이 MOD를 초과하면 warning 발생
@@ -310,7 +310,7 @@ BackupDiveComputer는 전체 DecoPlan 표를 보여주지 않는다.
 
 작업 항목:
 
-- [ ] 고정 DECO ladder 추가
+- [x] 고정 DECO ladder 추가
 
 예상 코드:
 
@@ -326,21 +326,21 @@ static constexpr float DECO_LADDER_M[] = {
 ```
 
 - [ ] single-stop-only DECO.STOP 동작 제거
-- [ ] raw decompression ceiling 계산
-- [ ] raw ceiling을 ladder의 첫 stop으로 매핑
-- [ ] ceiling <= 3m이면 first stop 3m
-- [ ] ceiling <= 6m이면 first stop 6m
-- [ ] ceiling <= 9m이면 first stop 9m
-- [ ] ceiling <= 12m이면 first stop 12m
-- [ ] ceiling <= 15m이면 first stop 15m
-- [ ] ceiling <= 18m이면 first stop 18m
-- [ ] raw ceiling > 18m인 경우 18m stop으로 속이지 않고 별도 경고 표시
-- [ ] 전체 DecoPlan 표시는 하지 않음
-- [ ] 현재 필요한 DECO.STOP 하나만 표시
+- [x] raw decompression ceiling 계산
+- [x] raw ceiling을 ladder의 첫 stop으로 매핑
+- [x] ceiling <= 3m이면 first stop 3m
+- [x] ceiling <= 6m이면 first stop 6m
+- [x] ceiling <= 9m이면 first stop 9m
+- [x] ceiling <= 12m이면 first stop 12m
+- [x] ceiling <= 15m이면 first stop 15m
+- [x] ceiling <= 18m이면 first stop 18m
+- [x] raw ceiling > 18m인 경우 18m stop으로 속이지 않고 별도 경고 표시
+- [x] 전체 DecoPlan 표시는 하지 않음
+- [x] 현재 필요한 DECO.STOP 하나만 표시
 - [ ] 현재 stop 완료 후 다음 shallower stop 자동 표시
 - [ ] stop depth는 ladder에서 선택
 - [ ] stop duration은 실시간 tissue nitrogen loading으로 계산
-- [ ] DECO.STOP과 S-STOP을 명확히 분리
+- [x] DECO.STOP과 S-STOP을 명확히 분리
 
 ---
 
@@ -612,7 +612,7 @@ EVENT_SAFETY_STOP_SKIPPED
 
 - [x] Battery Low 팝업 정책 정의
 - [x] 10% 이하 경고 정책 정의
-- [x] 2분 간격 팝업 정책 정의
+- [x] 10분 간격 팝업 정책 정의
 - [x] 2초 표시 정책 정의
 - [x] 충전 중 배터리 아이콘 점멸 정책 정의
 - [x] 100% 충전 시 FULL 표시 정책 정의
@@ -621,6 +621,9 @@ EVENT_SAFETY_STOP_SKIPPED
 - [ ] 실제 화면에서 FULL 확인
 - [ ] DECO.STOP 중 Battery Low 경고 우선순위 확인
 - [ ] MOD warning 중 Battery Low 경고 우선순위 확인
+- [x] LOW BATTERY 표시 시 짧은 비프 1회 호출
+- [x] 빠른 상승 위험 경고 시 3회 연속 비프 호출 (18m/min 초과시)
+- [x] 실제 Wokwi/VS Code 환경에서 buzzer 소리 출력 확인
 
 ---
 
