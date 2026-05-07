@@ -60,7 +60,9 @@ void uiDrawDiveDeco(float depthM,
                     float maxDepthM,
                     float tempC,
                     float ascentRateMpm,
-                    uint8_t batteryPct);
+                    uint8_t batteryPct,
+                    bool ceilingGtMaxStop,
+                    float ceilingDepthM);
 
 void uiDrawPostDive(uint16_t diveCount,
                     uint32_t diveTimeSec,

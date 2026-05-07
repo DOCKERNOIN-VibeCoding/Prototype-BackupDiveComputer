@@ -818,12 +818,37 @@ void uiDrawDiveDeco(float depthM,
                     float maxDepthM,
                     float tempC,
                     float ascentRateMpm,
-                    uint8_t batteryPct) {
+                    uint8_t batteryPct,
+                    bool ceilingGtMaxStop,
+                    float ceilingDepthM) {
+
     u8g2.clearBuffer();
 
     drawDiveLayout(batteryPct);
 
     drawDepthBox(depthM);
+
+        if (ceilingGtMaxStop) {
+        u8g2.setFont(u8g2_font_6x10_tf);
+        u8g2.drawStr(1, 49, "CEIL >18m");
+
+        u8g2.setFont(u8g2_font_5x7_tr);
+
+        char ceilBuf[16];
+        snprintf(ceilBuf, sizeof(ceilBuf), "CEIL %.1fm", ceilingDepthM);
+        u8g2.drawStr(68, 49, ceilBuf);
+
+        bool blinkOn = ((millis() / 500UL) % 2UL) == 0;
+
+        if (blinkOn) {
+            u8g2.drawStr(68, 62, "HOLD DEPTH");
+        }
+
+        uiDrawAscBar(ascentRateMpm);
+        u8g2.sendBuffer();
+        return;
+    }
+
 
     // 좌측 하단: DECO.STOP 6m / mm:ss
     u8g2.setFont(u8g2_font_5x7_tr);
@@ -881,7 +906,7 @@ void uiDrawDiveDeco(float depthM,
         if (depthM > (float)stopDepthM + 1.0f) {
             actionText = "ASCEND!";
         } else if (depthM < (float)stopDepthM - 0.5f) {
-            actionText = "TOO SHALLOW";
+            actionText = "DOWN!";
         } else {
             actionText = "HOLD";
         }
@@ -890,7 +915,7 @@ void uiDrawDiveDeco(float depthM,
     bool blinkOn = ((millis() / 500UL) % 2UL) == 0;
 
     if (blinkOn) {
-        if (strcmp(actionText, "TOO SHALLOW") == 0) {
+        if (strcmp(actionText, "DOWN!") == 0) {
             u8g2.setFont(u8g2_font_4x6_tr);
             u8g2.drawStr(68, 62, actionText);
         } else {

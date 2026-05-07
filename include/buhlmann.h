@@ -10,8 +10,10 @@ struct DecoInfo {
     float ceiling_bar;
     float ceiling_depth_m;
     uint8_t stop_depth_m;
+    uint8_t next_stop_depth_m;
     uint16_t stop_time_min;
     uint16_t tts_min;
+    bool ceiling_gt_max_stop;
 };
 
 class Buhlmann {
@@ -30,6 +32,16 @@ public:
     float getCurrentCeilingBar() const;
     float getCurrentCeilingDepthM() const;
     float getGF99(float ambientBar) const;
+
+    float getGasFO2() const;
+    float getGasFN2() const;
+
+    float calculateMODMeters() const;
+    float calculatePpO2Bar(float depthM) const;
+
+    static uint8_t mapCeilingToDecoStopDepth(float ceilingDepthM);
+    static uint8_t getNextShallowerStopDepth(uint8_t stopDepthM);
+    static bool isCeilingBeyondMaxStop(float ceilingDepthM);
 
     float getTissuePressure(uint8_t i) const;
     void setTissuePressure(uint8_t i, float value);

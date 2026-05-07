@@ -2,6 +2,14 @@
 #include "config.h"
 #include <math.h>
 
+static const uint8_t DECO_LADDER_M[] = {
+    18, 15, 12, 9, 6, 3
+};
+
+static const uint8_t DECO_LADDER_COUNT =
+    sizeof(DECO_LADDER_M) / sizeof(DECO_LADDER_M[0]);
+
+
 const float Buhlmann::N2_HALFTIME[NUM_COMPARTMENTS] = {
     4.0f, 8.0f, 12.5f, 18.5f, 27.0f, 38.3f, 54.3f, 77.0f,
     109.0f, 146.0f, 187.0f, 239.0f, 305.0f, 390.0f, 498.0f, 635.0f
@@ -21,12 +29,74 @@ const float Buhlmann::N2_B[NUM_COMPARTMENTS] = {
     0.9477f, 0.9544f, 0.9602f, 0.9653f
 };
 
+float Buhlmann::getGasFO2() const {
+    return (float)DIVE_GAS_FO2_PERCENT / 100.0f;
+}
+
+float Buhlmann::getGasFN2() const {
+    float fo2 = getGasFO2();
+    float fn2 = 1.0f - fo2;
+
+    if (fn2 < 0.0f) {
+        fn2 = 0.0f;
+    }
+
+    return fn2;
+}
+
+float Buhlmann::calculateMODMeters() const {
+    float fo2 = getGasFO2();
+
+    if (fo2 <= 0.0f) {
+        return 0.0f;
+    }
+
+    return ((DIVE_GAS_PPO2_MAX_BAR / fo2) - 1.0f) * 10.0f;
+}
+
+float Buhlmann::calculatePpO2Bar(float depthM) const {
+    if (depthM < 0.0f) {
+        depthM = 0.0f;
+    }
+
+    float ambientBar = surfacePressureBar_ + depthM / 10.0f;
+    return ambientBar * getGasFO2();
+}
+
+bool Buhlmann::isCeilingBeyondMaxStop(float ceilingDepthM) {
+    return ceilingDepthM > DECO_MAX_STOP_DEPTH_M;
+}
+
+uint8_t Buhlmann::mapCeilingToDecoStopDepth(float ceilingDepthM) {
+    if (ceilingDepthM <= 0.0f) {
+        return 0;
+    }
+
+    if (ceilingDepthM <= 3.0f) return 3;
+    if (ceilingDepthM <= 6.0f) return 6;
+    if (ceilingDepthM <= 9.0f) return 9;
+    if (ceilingDepthM <= 12.0f) return 12;
+    if (ceilingDepthM <= 15.0f) return 15;
+    if (ceilingDepthM <= 18.0f) return 18;
+
+    return 0;
+}
+
+uint8_t Buhlmann::getNextShallowerStopDepth(uint8_t stopDepthM) {
+    if (stopDepthM <= 3) {
+        return 0;
+    }
+
+    return stopDepthM - 3;
+}
+
+
 void Buhlmann::init(float surfacePressureBar) {
     surfacePressureBar_ = surfacePressureBar;
     gfLow_ = DEFAULT_GF_LOW;
     gfHigh_ = DEFAULT_GF_HIGH;
 
-    float ppN2Surface = (surfacePressureBar_ - 0.0627f) * 0.7902f;
+    float ppN2Surface = (surfacePressureBar_ - 0.0627f) * getGasFN2();
 
     for (uint8_t i = 0; i < NUM_COMPARTMENTS; i++) {
         tissuePN2_[i] = ppN2Surface;
@@ -74,7 +144,7 @@ void Buhlmann::setGF(uint8_t gfLow, uint8_t gfHigh) {
 void Buhlmann::update(float ambientBar, float intervalMin) {
     if (intervalMin <= 0.0f) return;
 
-    float ppN2Inspired = (ambientBar - 0.0627f) * 0.7902f;
+    float ppN2Inspired = (ambientBar - 0.0627f) * getGasFN2();
 
     for (uint8_t i = 0; i < NUM_COMPARTMENTS; i++) {
         float k = logf(2.0f) / N2_HALFTIME[i];
@@ -123,7 +193,7 @@ float Buhlmann::getCurrentCeilingDepthM() const {
 
 float Buhlmann::getGF99(float ambientBar) const {
     float maxGF = 0.0f;
-    float ppAmbN2 = (ambientBar - 0.0627f) * 0.7902f;
+    float ppAmbN2 = (ambientBar - 0.0627f) * getGasFN2();
 
     for (uint8_t i = 0; i < NUM_COMPARTMENTS; i++) {
         float m = calcMValue(i, ambientBar);
@@ -139,7 +209,7 @@ float Buhlmann::getGF99(float ambientBar) const {
 }
 
 uint16_t Buhlmann::calculateNDL(float ambientBar) const {
-    float ppN2Inspired = (ambientBar - 0.0627f) * 0.7902f;
+    float ppN2Inspired = (ambientBar - 0.0627f) * getGasFN2();
     float gfHigh = gfHigh_ / 100.0f;
     float minTime = 9999.0f;
 
@@ -191,16 +261,29 @@ DecoInfo Buhlmann::calculateDeco(float ambientBar, float ascentRateBarPerMin) co
     info.ceiling_bar = getCurrentCeilingBar();
     info.ceiling_depth_m = getCurrentCeilingDepthM();
     info.stop_depth_m = 0;
+    info.next_stop_depth_m = 0;
     info.stop_time_min = 0;
     info.tts_min = 0;
+    info.ceiling_gt_max_stop = false;
 
     if (info.ceiling_depth_m <= 0.0f) {
         return info;
     }
 
-    int stopDepth = ((int)ceilf(info.ceiling_depth_m / 3.0f)) * 3;
-    if (stopDepth < 3) stopDepth = 3;
-    info.stop_depth_m = (uint8_t)stopDepth;
+    if (isCeilingBeyondMaxStop(info.ceiling_depth_m)) {
+        info.ceiling_gt_max_stop = true;
+        return info;
+    }
+
+    uint8_t stopDepth = mapCeilingToDecoStopDepth(info.ceiling_depth_m);
+
+    if (stopDepth == 0) {
+        return info;
+    }
+
+    info.stop_depth_m = stopDepth;
+    info.next_stop_depth_m = getNextShallowerStopDepth(stopDepth);
+
 
     float simPN2[NUM_COMPARTMENTS];
     for (uint8_t i = 0; i < NUM_COMPARTMENTS; i++) {
@@ -226,7 +309,7 @@ DecoInfo Buhlmann::calculateDeco(float ambientBar, float ascentRateBarPerMin) co
 
     while (currentStop > 0 && totalTime < 999) {
         float stopAmbient = surfacePressureBar_ + currentStop / 10.0f;
-        float ppN2Stop = (stopAmbient - 0.0627f) * 0.7902f;
+        float ppN2Stop = (stopAmbient - 0.0627f) * getGasFN2();
 
         uint16_t stopTime = 0;
         bool canAscend = false;
@@ -299,7 +382,7 @@ uint32_t Buhlmann::calculateNoFlyMinutes(float cabinPressureBar) const {
     float gfHigh = gfHigh_ / 100.0f;
 
     // 수면에서의 평형 질소분압
-    float ppN2Surface = (surfacePressureBar_ - 0.0627f) * 0.7902f;
+    float ppN2Surface = (surfacePressureBar_ - 0.0627f) * getGasFN2();
 
     float maxTimeMin = 0.0f;
 

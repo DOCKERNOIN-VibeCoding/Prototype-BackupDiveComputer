@@ -93,6 +93,56 @@
 // 기존 코드 호환용
 #define ASC_BAR_MAX_RATE_MPM            ASC_GRAPH_MAX_RATE_MPM
 
+// ============================================================
+// Gas config - Air / Nitrox-ready single gas
+// ============================================================
+//
+// 기본 gas는 Air / EAN21 입니다.
+// DIVE_GAS_FO2_PERCENT는 산소 "분압"이 아니라 산소 "비율(%)"입니다.
+//
+// Air / EAN21:
+//   FO2 = 21%
+//   FN2 = 79%
+//
+// 향후 Nitrox 설정을 위해 21~40% 범위를 준비합니다.
+// 현재 v1.3에서는 compile-time 설정으로 사용합니다.
+// ============================================================
+
+#ifndef DIVE_GAS_FO2_PERCENT
+#define DIVE_GAS_FO2_PERCENT       21
+#endif
+
+#ifndef DIVE_GAS_PPO2_MAX_BAR
+#define DIVE_GAS_PPO2_MAX_BAR      1.40f
+#endif
+
+#define DIVE_GAS_FO2_MIN_PERCENT   21
+#define DIVE_GAS_FO2_MAX_PERCENT   40
+
+#if DIVE_GAS_FO2_PERCENT < DIVE_GAS_FO2_MIN_PERCENT
+#error "DIVE_GAS_FO2_PERCENT must be >= 21"
+#endif
+
+#if DIVE_GAS_FO2_PERCENT > DIVE_GAS_FO2_MAX_PERCENT
+#error "DIVE_GAS_FO2_PERCENT must be <= 40"
+#endif
+
+
+// ============================================================
+// DECO.STOP ladder
+// ============================================================
+//
+// v1.3 DECO.STOP ladder:
+//   18m -> 15m -> 12m -> 9m -> 6m -> 3m
+//
+// raw ceiling이 18m보다 깊으면 18m stop으로 안내하지 않고
+// CEIL >18m 경고 상태로 처리합니다.
+// ============================================================
+
+#define DECO_MAX_STOP_DEPTH_M       18.0f
+#define DECO_STOP_WINDOW_M           0.6f
+#define POST_VIOLATION_ADVISORY_HOURS 48UL
+
 
 // ------------------------------------------------------------
 // Gradient Factor 기본 설정

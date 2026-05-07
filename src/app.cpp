@@ -586,6 +586,15 @@ if (dive_.depthM < DIVE_END_DEPTH_M) {
             dive_.decoStopTimeMin = info.stop_time_min;
             dive_.decoTtsMin = info.tts_min;
             dive_.ceilingDepthM = info.ceiling_depth_m;
+            dive_.decoCeilingGtMaxStop = info.ceiling_gt_max_stop;
+            if (dive_.decoCeilingGtMaxStop) {
+                dive_.decoStopDepthM = 0;
+                dive_.decoStopTimeMin = 0;
+                dive_.decoStopRemainSec = 0;
+                dive_.lastDecoStopTickMs = now;
+            }
+
+            if (!dive_.decoCeilingGtMaxStop) {
 
             if (dive_.lastDecoStopDepthM != dive_.decoStopDepthM) {
                 dive_.lastDecoStopDepthM = dive_.decoStopDepthM;
@@ -606,8 +615,9 @@ if (dive_.depthM < DIVE_END_DEPTH_M) {
 
             bool atDecoStop =
                 dive_.decoStopDepthM > 0 &&
-                dive_.depthM <= (float)dive_.decoStopDepthM + 1.0f &&
-                dive_.depthM >= (float)dive_.decoStopDepthM - 0.5f;
+                dive_.depthM <= (float)dive_.decoStopDepthM + DECO_STOP_WINDOW_M &&
+                dive_.depthM >= (float)dive_.decoStopDepthM - DECO_STOP_WINDOW_M;
+
 
             if (atDecoStop) {
                 if (now > dive_.lastDecoStopTickMs) {
@@ -627,6 +637,7 @@ if (dive_.depthM < DIVE_END_DEPTH_M) {
             } else {
                 dive_.lastDecoStopTickMs = now;
             }
+        }
 
             static uint32_t lastCeilingAlarmMs = 0;
 
@@ -754,7 +765,10 @@ if (dive_.depthM < DIVE_END_DEPTH_M) {
                                 dive_.maxDepthM,
                                 dive_.tempC,
                                 dive_.ascentRateMpm,
-                                mockServices.getBatteryPct());
+                                mockServices.getBatteryPct(),
+                                dive_.decoCeilingGtMaxStop,
+                                dive_.ceilingDepthM);
+
                 break;
         }
     }

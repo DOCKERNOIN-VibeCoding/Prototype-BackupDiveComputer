@@ -49,6 +49,7 @@ struct DiveRuntime {
     uint16_t decoTtsMin = 0;
     float ceilingDepthM = 0.0f;
     bool decoViolation = false;
+    bool decoCeilingGtMaxStop = false;
 
     bool safetyTriggered = false;
     bool safetyCompleted = false;
