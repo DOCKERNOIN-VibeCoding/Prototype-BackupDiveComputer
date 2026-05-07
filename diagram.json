@@ -29,6 +29,7 @@
       "left": 420,
       "attrs": {
         "mode": "smooth"
+      }
     }
   ],
   "connections": [
@@ -39,6 +40,5 @@
 
     [ "esp:GND.2", "bz1:1", "black", [] ],
     [ "esp:4", "bz1:2", "orange", [] ]
-
   ]
 }
