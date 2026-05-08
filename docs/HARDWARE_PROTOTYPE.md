@@ -1,6 +1,6 @@
 
 ---
-```markdown
+
 # HARDWARE_PROTOTYPE.md
 
 Backup Dive Computer v1.3 실제 프로토타입 하드웨어 사양 문서입니다.

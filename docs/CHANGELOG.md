@@ -510,9 +510,6 @@ platformio.ini
 Wokwi/VS Code 환경에서 buzzer 실제 음성 출력 확인 필요 (DONE. 정상출력 확인 완료!)
 missed deco / re-entry / 48h advisory 상태 머신 및 로그 이벤트는 추가 구현 필요
 ```
-```
-
-
 
 ### Version renaming policy
 
