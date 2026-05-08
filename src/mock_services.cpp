@@ -172,9 +172,25 @@ void MockServices::handleCommand(String cmd, SimSensor& sensor) {
     }
 
     if (cmd == "beep test") {
-    Serial.println("[MOCK_BUZZER] beep test");
-    tone(PIN_BUZZER, 2000, 300);
-    return;
+        Serial.println("[MOCK_BUZZER] beep test");
+
+        tone(PIN_BUZZER, 1000);
+        delay(BUZZER_MEDIUM_BEEP_MS);
+        noTone(PIN_BUZZER);
+
+        delay(BUZZER_PATTERN_GAP_MS);
+
+        tone(PIN_BUZZER, 1500);
+        delay(BUZZER_MEDIUM_BEEP_MS);
+        noTone(PIN_BUZZER);
+
+        delay(BUZZER_PATTERN_GAP_MS);
+
+        tone(PIN_BUZZER, 2000);
+        delay(BUZZER_MEDIUM_BEEP_MS);
+        noTone(PIN_BUZZER);
+
+        return;
     }
 
 

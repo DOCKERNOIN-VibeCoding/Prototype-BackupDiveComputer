@@ -316,7 +316,7 @@ void DiveComputerApp::startDive() {
                   deco_.getTissuePressure(8),
                   deco_.getTissuePressure(15));
 
-    beep(1200, 80);
+    beep(1200, BUZZER_SHORT_BEEP_MS);
 
     setState(SystemState::Dive);
 }
@@ -503,7 +503,7 @@ if (dive_.depthM < DIVE_END_DEPTH_M) {
                 if (dive_.safetyPaused) {
                     dive_.safetyPaused = false;
                     Serial.println("[DIVE] Safety stop RESUMED");
-                    beep(1000, 100);
+                    beep(1000, BUZZER_SHORT_BEEP_MS);
                 }
 
                 if (now > dive_.lastSafetyTickMs) {
@@ -567,7 +567,7 @@ if (dive_.depthM < DIVE_END_DEPTH_M) {
                         dive_.phase = DivePhase::Normal;
 
                         Serial.println("[DIVE] Safety stop cancelled: dive resumed deeper than 6m for 30s");
-                        beep(900, 120);
+                        beep(900, BUZZER_SHORT_BEEP_MS);
                         break;
                     }
                 } else {
@@ -1036,15 +1036,23 @@ void DiveComputerApp::beep(uint32_t freq, uint32_t durationMs) {
         return;
     }
 
-    tone(PIN_BUZZER, freq, durationMs);
+    if (durationMs < BUZZER_MIN_BEEP_MS) {
+        durationMs = BUZZER_MIN_BEEP_MS;
+    }
+
+    tone(PIN_BUZZER, freq);
+    delay(durationMs);
+    noTone(PIN_BUZZER);
 }
+
 
 void DiveComputerApp::beepTripleWarning() {
     for (uint8_t i = 0; i < 3; i++) {
-        beep(ALARM_FREQ_ASCENT_WARN, 100);
-        delay(130);
+        beep(ALARM_FREQ_ASCENT_WARN, BUZZER_SHORT_BEEP_MS);
+        delay(BUZZER_PATTERN_GAP_MS);
     }
 }
+
 
 
 void DiveComputerApp::drawSurfaceInfoScreen() {

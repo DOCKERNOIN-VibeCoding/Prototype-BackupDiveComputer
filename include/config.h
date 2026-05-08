@@ -222,5 +222,22 @@
 #define ALARM_FREQ_SAFETY_DONE     1500
 #define ALARM_FREQ_BATTERY_LOW      900
 
+// ============================================================
+// Buzzer timing
+// ============================================================
+//
+// 실제 프로토타입에서는 방수 하우징, 피에조 부착 방식,
+// 주변 소음 때문에 80~100ms 단발음은 너무 짧을 수 있습니다.
+// 기본 비프음은 최소 200ms 이상으로 보정합니다.
+// ============================================================
+
+#define BUZZER_MIN_BEEP_MS        200
+#define BUZZER_SHORT_BEEP_MS      200
+#define BUZZER_MEDIUM_BEEP_MS     300
+#define BUZZER_LONG_BEEP_MS       500
+#define BUZZER_PATTERN_GAP_MS     120
+
+
+
 #endif
 
