@@ -47,6 +47,7 @@ void DiveComputerApp::update() {
 
     updateGFIfNeeded();
     updateBatteryLowPopup();
+    updatePostViolationAdvisory();
 
     if (mockServices.isCharging() && state_ != SystemState::Charging) {
         setState(SystemState::Charging);
@@ -309,6 +310,15 @@ void DiveComputerApp::startDive() {
 
     mockServices.loggerStartDive(diveCount_);
 
+    if (activeDecoViolation_) {
+        reentryCount_++;
+        clearedAfterReentry_ = false;
+
+        Serial.printf("[DECO] Re-entry after missed DECO count=%u\n", reentryCount_);
+        logDiveEvent(DiveEventType::EVENT_DECO_REENTRY, "EVENT_DECO_REENTRY");
+    }
+
+
     Serial.printf("[DIVE] start #%u depth=%.1fm\n", diveCount_, dive_.depthM);
     Serial.printf("[DIVE] tissue pN2 c0=%.3f c4=%.3f c8=%.3f c15=%.3f\n",
                   deco_.getTissuePressure(0),
@@ -451,17 +461,37 @@ if (dive_.depthM < DIVE_END_DEPTH_M) {
     switch (dive_.phase) {
         case DivePhase::Normal: {
             if (dive_.ndlMin == 0) {
-                dive_.phase = DivePhase::Deco;
-                dive_.decoEntered = true;
+                DecoInfo info = deco_.calculateDeco(ambientBar, 1.0f);
 
-                Serial.println("[DIVE] Enter DECO");
-                beep(ALARM_FREQ_DECO_ENTER, 150);
-                delay(100);
-                beep(ALARM_FREQ_DECO_ENTER, 150);
-                delay(100);
-                beep(ALARM_FREQ_DECO_ENTER, 150);
-                break;
+                bool decoRequired =
+                    info.ceiling_depth_m > 0.5f ||
+                    info.stop_depth_m > 0 ||
+                    info.ceiling_gt_max_stop;
+
+                if (decoRequired) {
+                    dive_.phase = DivePhase::Deco;
+                    dive_.decoEntered = true;
+
+                    dive_.decoStopDepthM = info.stop_depth_m;
+                    dive_.decoStopTimeMin = info.stop_time_min;
+                    dive_.decoTtsMin = info.tts_min;
+                    dive_.ceilingDepthM = info.ceiling_depth_m;
+                    dive_.decoCeilingGtMaxStop = info.ceiling_gt_max_stop;
+
+                    Serial.println("[DIVE] Enter DECO");
+                    logDiveEvent(DiveEventType::EVENT_DECO_REQUIRED,
+                                "EVENT_DECO_REQUIRED");
+
+                    beep(ALARM_FREQ_DECO_ENTER, 150);
+                    delay(100);
+                    beep(ALARM_FREQ_DECO_ENTER, 150);
+                    delay(100);
+                    beep(ALARM_FREQ_DECO_ENTER, 150);
+
+                    break;
+                }
             }
+
 
             if (!dive_.safetyTriggered &&
                 !dive_.safetyCompleted &&
@@ -580,6 +610,8 @@ if (dive_.depthM < DIVE_END_DEPTH_M) {
         }
 
         case DivePhase::Deco: {
+            bool wasCeilingGtMaxStop = dive_.decoCeilingGtMaxStop;
+
             DecoInfo info = deco_.calculateDeco(ambientBar, 1.0f);
 
             dive_.decoStopDepthM = info.stop_depth_m;
@@ -587,6 +619,26 @@ if (dive_.depthM < DIVE_END_DEPTH_M) {
             dive_.decoTtsMin = info.tts_min;
             dive_.ceilingDepthM = info.ceiling_depth_m;
             dive_.decoCeilingGtMaxStop = info.ceiling_gt_max_stop;
+            if (!dive_.decoCeilingGtMaxStop &&
+                dive_.ceilingDepthM <= 0.5f &&
+                dive_.decoStopDepthM == 0) {
+
+                dive_.phase = DivePhase::Normal;
+
+                dive_.decoStopDepthM = 0;
+                dive_.lastDecoStopDepthM = 0;
+                dive_.decoStopTimeMin = 0;
+                dive_.decoStopRemainSec = 0;
+                dive_.decoTtsMin = 0;
+
+                Serial.println("[DIVE] DECO cleared: no active ceiling");
+                break;
+            }
+
+            if (dive_.decoCeilingGtMaxStop && !wasCeilingGtMaxStop) {
+            logDiveEvent(DiveEventType::EVENT_CEIL_GT_18M, "EVENT_CEIL_GT_18M");
+            }
+
             if (dive_.decoCeilingGtMaxStop) {
                 dive_.decoStopDepthM = 0;
                 dive_.decoStopTimeMin = 0;
@@ -615,9 +667,8 @@ if (dive_.depthM < DIVE_END_DEPTH_M) {
 
             bool atDecoStop =
                 dive_.decoStopDepthM > 0 &&
-                dive_.depthM <= (float)dive_.decoStopDepthM + DECO_STOP_WINDOW_M &&
-                dive_.depthM >= (float)dive_.decoStopDepthM - DECO_STOP_WINDOW_M;
-
+                dive_.depthM <= (float)dive_.decoStopDepthM + DECO_STOP_DEEP_MARGIN_M &&
+                dive_.depthM >= (float)dive_.decoStopDepthM - DECO_STOP_SHALLOW_MARGIN_M;
 
             if (atDecoStop) {
                 if (now > dive_.lastDecoStopTickMs) {
@@ -641,10 +692,14 @@ if (dive_.depthM < DIVE_END_DEPTH_M) {
 
             static uint32_t lastCeilingAlarmMs = 0;
 
-            if (dive_.ceilingDepthM > 0.5f &&
-                dive_.depthM < dive_.ceilingDepthM - 0.5f) {
+                if (dive_.ceilingDepthM > 0.5f &&
+                    dive_.depthM < dive_.ceilingDepthM - 0.5f) {
 
-                dive_.decoViolation = true;
+                    if (!dive_.decoViolation) {
+                        logDiveEvent(DiveEventType::EVENT_CEILING_EXCEEDED, "EVENT_CEILING_EXCEEDED");
+                    }
+
+                    dive_.decoViolation = true;
 
                 if (now - lastCeilingAlarmMs >= 2000UL) {
                     lastCeilingAlarmMs = now;
@@ -667,6 +722,18 @@ if (dive_.depthM < DIVE_END_DEPTH_M) {
                 dive_.decoTtsMin = 0;
 
                 Serial.println("[DIVE] DECO cleared");
+                    if (activeDecoViolation_) {
+                        activeDecoViolation_ = false;
+                        clearedAfterReentry_ = true;
+
+                        Serial.println("[DECO] Active violation cleared after re-entry");
+                        logDiveEvent(DiveEventType::EVENT_DECO_CLEARED_AFTER_REENTRY,
+                                    "EVENT_DECO_CLEARED_AFTER_REENTRY");
+                    } else {
+                        logDiveEvent(DiveEventType::EVENT_DECO_CLEARED,
+                                    "EVENT_DECO_CLEARED");
+                    }
+
 
                 beep(ALARM_FREQ_DECO_ENTER, 150);
                 delay(100);
@@ -779,7 +846,35 @@ void DiveComputerApp::endDive() {
 
     if (dive_.decoEntered && dive_.ceilingDepthM > 0.5f) {
         dive_.decoViolation = true;
+        activeDecoViolation_ = true;
+        clearedAfterReentry_ = false;
+
         Serial.println("[DIVE] DECO violation: surfaced with active ceiling");
+
+        logDiveEvent(DiveEventType::EVENT_DECO_MISSED,
+                     "EVENT_DECO_MISSED");
+
+        logDiveEvent(DiveEventType::EVENT_DECO_VIOLATION_SURFACED,
+                     "EVENT_DECO_VIOLATION_SURFACED");
+
+        bool advisoryWasActive = postViolationAdvisory_;
+
+        postViolationAdvisory_ = true;
+
+        uint32_t newAdvisoryEnd =
+            getCurrentEpochSec() + POST_VIOLATION_ADVISORY_HOURS * 3600UL;
+
+        if (newAdvisoryEnd > postViolationAdvisoryEndEpochSec_) {
+            postViolationAdvisoryEndEpochSec_ = newAdvisoryEnd;
+        }
+
+        if (!advisoryWasActive) {
+            logDiveEvent(DiveEventType::EVENT_POST_VIOLATION_ADVISORY_STARTED,
+                         "EVENT_POST_VIOLATION_ADVISORY_STARTED");
+        }
+
+        Serial.printf("[DECO] Post violation advisory until epoch=%lu\n",
+                      postViolationAdvisoryEndEpochSec_);
     }
 
     uint32_t durationSec = 0;
@@ -919,18 +1014,50 @@ void DiveComputerApp::handlePostDive() {
         diveDetectCount_ = 0;
     }
 
+    if (postViolationAdvisory_ &&
+        now - postDiveStartMs_ >= DECO_VIOLATION_ALERT_DISPLAY_MS) {
+
+        Serial.println("[POST] deco violation alert done -> SURFACE");
+
+        postDiveStartMs_ = 0;
+        surfaceIntervalStartMs_ = millis();
+        surfaceIntervalOffsetSec_ = 0;
+
+        setState(SystemState::Surface);
+        return;
+    }
+
     if (now - lastUiMs_ >= UI_UPDATE_INTERVAL_MS) {
         lastUiMs_ = now;
 
         uint32_t remain = getNoFlyRemainSec();
 
-        uiDrawPostDive(diveCount_,
-                       lastDiveDurationSec_,
-                       lastDiveMaxDepthM_,
-                       dive_.minTempC,
-                       remain,
-                       mockServices.isGpsValid(),
-                       mockServices.getBatteryPct());
+        if (postViolationAdvisory_) {
+            uint32_t advisoryRemainSec = 0;
+            uint32_t nowEpoch = getCurrentEpochSec();
+
+            if (postViolationAdvisoryEndEpochSec_ > nowEpoch) {
+                advisoryRemainSec = postViolationAdvisoryEndEpochSec_ - nowEpoch;
+            }
+
+            uiDrawDecoViolationAlert(getCurrentEpochSec(),
+                                      SCENARIO_TZ_OFFSET_MIN,
+                                      mockServices.getBatteryPct(),
+                                      mockServices.isGpsValid(),
+                                      mockServices.isCharging(),
+                                      false,
+                                      advisoryRemainSec,
+                                      activeDecoViolation_);
+        } else {
+            uiDrawPostDive(diveCount_,
+                           lastDiveDurationSec_,
+                           lastDiveMaxDepthM_,
+                           dive_.minTempC,
+                           remain,
+                           mockServices.isGpsValid(),
+                           mockServices.getBatteryPct());
+        }
+
     }
 
     if (now - postDiveStartMs_ >= POST_DIVE_DISPLAY_MS) {
@@ -1024,6 +1151,48 @@ void DiveComputerApp::updateBatteryLowPopup() {
     }
 }
 
+void DiveComputerApp::updatePostViolationAdvisory() {
+    if (!postViolationAdvisory_) {
+        return;
+    }
+
+    if (postViolationAdvisoryEndEpochSec_ == 0) {
+        return;
+    }
+
+    uint32_t nowEpoch = getCurrentEpochSec();
+
+    if (nowEpoch < postViolationAdvisoryEndEpochSec_) {
+        return;
+    }
+
+    postViolationAdvisory_ = false;
+    postViolationAdvisoryEndEpochSec_ = 0;
+
+    Serial.println("[DECO] Post violation advisory ended");
+
+    logDiveEvent(DiveEventType::EVENT_POST_VIOLATION_ADVISORY_ENDED,
+                 "EVENT_POST_VIOLATION_ADVISORY_ENDED");
+}
+
+
+void DiveComputerApp::logDiveEvent(DiveEventType type, const char* eventName) {
+    uint32_t elapsedSec = 0;
+
+    if (dive_.diveStartMs > 0) {
+        elapsedSec = (millis() - dive_.diveStartMs) / 1000UL;
+    }
+
+    Serial.printf("[EVENT] %s type=%u elapsed=%lus depth=%.1fm ceiling=%.1fm stop=%um remain=%lus\n",
+                  eventName,
+                  (unsigned)static_cast<uint8_t>(type),
+                  (unsigned long)elapsedSec,
+                  dive_.depthM,
+                  dive_.ceilingDepthM,
+                  dive_.decoStopDepthM,
+                  (unsigned long)dive_.decoStopRemainSec);
+}
+
 bool DiveComputerApp::isBatteryLowPopupActive() const {
     const uint32_t now = millis();
 
@@ -1063,6 +1232,14 @@ void DiveComputerApp::drawSurfaceInfoScreen() {
     bool charging = mockServices.isCharging();
     bool chargeFull = charging && batteryPct >= BATTERY_FULL_THRESHOLD_PCT;
 
+    uint32_t advisoryRemainSec = 0;
+    uint32_t nowEpoch = getCurrentEpochSec();
+
+    if (postViolationAdvisory_ &&
+        postViolationAdvisoryEndEpochSec_ > nowEpoch) {
+        advisoryRemainSec = postViolationAdvisoryEndEpochSec_ - nowEpoch;
+    }
+
     uiDrawSurface(getCurrentEpochSec(),
                 SCENARIO_TZ_OFFSET_MIN,
                 batteryPct,
@@ -1073,7 +1250,10 @@ void DiveComputerApp::drawSurfaceInfoScreen() {
                 lastDiveMaxDepthM_,
                 lastDiveMinTempC_,
                 surfaceIntervalSec,
-                noFlyRemainSec);
+                noFlyRemainSec,
+                postViolationAdvisory_,
+                advisoryRemainSec,
+                activeDecoViolation_);
 
 }
 

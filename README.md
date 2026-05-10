@@ -1,5 +1,4 @@
 
-
 # Prototype-BackupDiveComputer
 
 Prototype backup dive computer project based on ESP32-S3, Wokwi simulation, PlatformIO, and OLED UI.
@@ -103,4 +102,4 @@ At this stage, this project should not be assumed to be compatible with or deriv
 
 
 All rights reserved by the author during the prototype phase.
-
+```

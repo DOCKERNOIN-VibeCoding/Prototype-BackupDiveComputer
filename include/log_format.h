@@ -83,6 +83,21 @@ struct __attribute__((packed)) DiveSample {
     uint16_t ndlOrTtsMin;        // NDL 또는 TTS
 };
 
+enum class DiveEventType : uint8_t {
+    EVENT_DECO_REQUIRED = 1,
+    EVENT_DECO_STOP_STARTED = 2,
+    EVENT_DECO_STOP_COMPLETED = 3,
+    EVENT_DECO_CLEARED = 4,
+    EVENT_DECO_MISSED = 5,
+    EVENT_DECO_VIOLATION_SURFACED = 6,
+    EVENT_DECO_REENTRY = 7,
+    EVENT_DECO_CLEARED_AFTER_REENTRY = 8,
+    EVENT_POST_VIOLATION_ADVISORY_STARTED = 9,
+    EVENT_POST_VIOLATION_ADVISORY_ENDED = 10,
+    EVENT_CEILING_EXCEEDED = 11,
+    EVENT_CEIL_GT_18M = 12
+};
+
 // 이벤트 구조입니다.
 // 예: 안전정지 시작, 감압 진입, 빠른 상승 경고 등
 struct __attribute__((packed)) DiveEvent {

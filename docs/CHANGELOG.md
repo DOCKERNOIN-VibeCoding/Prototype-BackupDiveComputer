@@ -4,6 +4,25 @@
 본 문서는 BackupDiveComputer 프로젝트의 주요 변경 사항을 기록한다.
 ---
 
+## v1.3.5-dev
+
+### Added
+- Added DECO.STOP violation advisory flow.
+- Added 48h post-violation advisory policy.
+- Added DECO.VIOL display on SURFACE mode.
+- Added re-entry policy after missed decompression.
+- Added event definitions for deco violation lifecycle.
+
+### Changed
+- DECO.STOP no longer causes hard lockout.
+- SURFACE mode continues to display previous dive information after deco violation.
+- DECO.STOP margin policy refined with stricter shallow-side handling.
+- Safety stop and decompression stop handling separated more clearly.
+
+### Fixed
+- Prevented invalid DECO.STOP 0m display.
+- Improved final surfacing detection after missed stop.
+
 ## Unreleased
 
 ### Added

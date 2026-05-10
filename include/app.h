@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include "buhlmann.h"
+#include "log_format.h"
 
 enum class SystemState {
     Surface,
@@ -109,8 +110,11 @@ private:
     uint32_t lastDiveDurationSec_ = 0;
     uint32_t lastDiveEndEpochSec_ = 0;
     uint32_t noFlyEndEpochSec_ = 0;
-
-
+    bool activeDecoViolation_ = false;
+    bool postViolationAdvisory_ = false;
+    uint32_t postViolationAdvisoryEndEpochSec_ = 0;
+    uint8_t reentryCount_ = 0;
+    bool clearedAfterReentry_ = false;
 
 private:
     void setState(SystemState newState);
@@ -143,6 +147,8 @@ private:
     uint32_t getCurrentEpochSec() const;
     uint32_t getSurfaceIntervalSec() const;
     uint32_t getNoFlyRemainSec() const;
+    void updatePostViolationAdvisory();
+    void logDiveEvent(DiveEventType type, const char* eventName);
     void drawSurfaceInfoScreen();
 };
 

@@ -608,7 +608,10 @@ void uiDrawSurface(uint32_t currentEpochSec,
                    float lastMaxDepthM,
                    float lastMinTempC,
                    uint32_t surfaceIntervalSec,
-                   uint32_t noFlyRemainSec) {
+                   uint32_t noFlyRemainSec,
+                   bool postViolationAdvisory,
+                   uint32_t postViolationAdvisoryRemainSec,
+                   bool activeDecoViolation) {
 
     u8g2.clearBuffer();
 
@@ -618,7 +621,7 @@ void uiDrawSurface(uint32_t currentEpochSec,
                       gpsValid,
                       charging,
                       chargeFull);
-
+                      
     char lastDiveText[24];
     char surfaceText[24];
     char noFlyText[24];
@@ -704,14 +707,74 @@ void uiDrawSurface(uint32_t currentEpochSec,
     u8g2.drawStr(valueX, y4, surfaceText);
 
     // ------------------------------------------------------------
-    // 5. N-FLY
+    // 5. N-FLY / DECO.VIOL
+    //
+    // 감압 위반 advisory가 있더라도 Surface 정보를 막지 않습니다.
+    // 작은 화면이라 마지막 줄에서 N-FLY와 DECO.VIOL을 번갈아 표시합니다.
     // ------------------------------------------------------------
-    u8g2.drawStr(labelX, y5, "N-FLY");
-    u8g2.drawStr(valueX, y5, noFlyText);
+    if (postViolationAdvisory && ((millis() / 2000UL) % 2UL == 1)) {
+        uint32_t hours = postViolationAdvisoryRemainSec / 3600UL;
+        uint32_t minutes = (postViolationAdvisoryRemainSec % 3600UL) / 60UL;
+
+        char violText[24];
+        snprintf(violText,
+                 sizeof(violText),
+                 "%02lu:%02lu",
+                 (unsigned long)hours,
+                 (unsigned long)minutes);
+
+        u8g2.drawStr(labelX, y5, "DECO.VIOL");
+        u8g2.drawStr(valueX, y5, violText);
+    } else {
+        u8g2.drawStr(labelX, y5, "N-FLY");
+        u8g2.drawStr(valueX, y5, noFlyText);
+    }
 
     u8g2.sendBuffer();
 }
 
+void uiDrawDecoViolationAlert(uint32_t currentEpochSec,
+                              int16_t tzOffsetMin,
+                              uint8_t batteryPct,
+                              bool gpsValid,
+                              bool charging,
+                              bool chargeFull,
+                              uint32_t advisoryRemainSec,
+                              bool activeDecoViolation) {
+    u8g2.clearBuffer();
+
+    drawTopBarSurface(currentEpochSec,
+                      tzOffsetMin,
+                      batteryPct,
+                      gpsValid,
+                      charging,
+                      chargeFull);
+
+    uint32_t hours = advisoryRemainSec / 3600UL;
+    uint32_t minutes = (advisoryRemainSec % 3600UL) / 60UL;
+
+    char remainBuf[20];
+    snprintf(remainBuf,
+             sizeof(remainBuf),
+             "%02lu:%02lu LEFT",
+             (unsigned long)hours,
+             (unsigned long)minutes);
+
+    u8g2.setFont(u8g2_font_7x14B_tr);
+    u8g2.drawStr(18, 29, "MISSED DECO");
+
+    u8g2.setFont(u8g2_font_5x7_tr);
+
+    if (activeDecoViolation) {
+        u8g2.drawStr(30, 46, "VIOL ACTIVE");
+    } else {
+        u8g2.drawStr(30, 46, "NO DIVE 48H");
+    }
+
+    u8g2.drawStr(34, 61, remainBuf);
+
+    u8g2.sendBuffer();
+}
 
 // ------------------------------------------------------------
 // Dive Normal
@@ -849,6 +912,18 @@ void uiDrawDiveDeco(float depthM,
         return;
     }
 
+    if (stopDepthM == 0) {
+        u8g2.setFont(u8g2_font_5x7_tr);
+        u8g2.drawStr(1, 49, "DECO CHECK");
+
+        u8g2.setFont(u8g2_font_7x14B_tr);
+        u8g2.drawStr(12, 63, "WAIT");
+
+        uiDrawAscBar(ascentRateMpm);
+        u8g2.sendBuffer();
+        return;
+    }
+
 
     // 좌측 하단: DECO.STOP 6m / mm:ss
     u8g2.setFont(u8g2_font_5x7_tr);
@@ -904,12 +979,15 @@ void uiDrawDiveDeco(float depthM,
     int8_t actionArrow = 0; // 1 = up, -1 = down, 0 = none
 
     if (stopDepthM > 0) {
-        if (depthM > (float)stopDepthM + DECO_STOP_WINDOW_M) {
-            actionText = "ASCEND";
-            actionArrow = 1;
-        } else if (depthM < (float)stopDepthM - DECO_STOP_WINDOW_M) {
+        if (depthM < (float)stopDepthM - DECO_STOP_SHALLOW_MARGIN_M) {
             actionText = "DESCEND";
             actionArrow = -1;
+        } else if (depthM > (float)stopDepthM + DECO_STOP_DEEP_MARGIN_M) {
+            actionText = "ASCEND";
+            actionArrow = 1;
+        } else if (depthM > (float)stopDepthM + DECO_STOP_HOLD_MARGIN_M) {
+            actionText = "ASCEND";
+            actionArrow = 1;
         } else {
             actionText = "HOLD";
             actionArrow = 0;

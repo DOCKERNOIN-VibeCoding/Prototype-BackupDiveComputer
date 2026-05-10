@@ -23,7 +23,19 @@ void uiDrawSurface(uint32_t currentEpochSec,
                    float lastMaxDepthM,
                    float lastMinTempC,
                    uint32_t surfaceIntervalSec,
-                   uint32_t noFlyRemainSec);
+                   uint32_t noFlyRemainSec,
+                   bool postViolationAdvisory,
+                   uint32_t postViolationAdvisoryRemainSec,
+                   bool activeDecoViolation);
+
+void uiDrawDecoViolationAlert(uint32_t currentEpochSec,
+                              int16_t tzOffsetMin,
+                              uint8_t batteryPct,
+                              bool gpsValid,
+                              bool charging,
+                              bool chargeFull,
+                              uint32_t advisoryRemainSec,
+                              bool activeDecoViolation);
 
 void uiDrawDiveNormal(float depthM,
                       uint16_t ndlMin,

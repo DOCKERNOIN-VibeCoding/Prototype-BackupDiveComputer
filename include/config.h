@@ -8,7 +8,7 @@
 // ============================================================
 
 #define FW_NAME     "BackupDiveComputer"
-#define FW_VERSION  "v1.3-dev"
+#define FW_VERSION  "v1.3.5-dev"
 
 // ============================================================
 // Pins
@@ -140,9 +140,18 @@
 // ============================================================
 
 #define DECO_MAX_STOP_DEPTH_M       18.0f
-#define DECO_STOP_WINDOW_M           0.6f
-#define POST_VIOLATION_ADVISORY_HOURS 48UL
 
+// DECO.STOP depth tolerance
+//
+// Shallow side is strict because ascending above the stop/ceiling is risky.
+// Deep side allows more margin because being slightly deeper still permits
+// decompression, although it is less optimal.
+#define DECO_STOP_SHALLOW_MARGIN_M   0.6f
+#define DECO_STOP_HOLD_MARGIN_M      0.6f
+#define DECO_STOP_DEEP_MARGIN_M      1.8f
+
+#define POST_VIOLATION_ADVISORY_HOURS 48UL
+#define DECO_VIOLATION_ALERT_DISPLAY_MS 30000UL
 
 // ------------------------------------------------------------
 // Gradient Factor 기본 설정
