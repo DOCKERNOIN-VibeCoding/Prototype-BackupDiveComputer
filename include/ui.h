@@ -12,6 +12,7 @@ extern U8G2_ST7567_OS12864_F_4W_HW_SPI u8g2;
 
 void uiBegin();
 void uiSplash();
+void uiDrawSplashLogo();
 
 void uiDrawSurface(uint32_t currentEpochSec,
                    int16_t tzOffsetMin,

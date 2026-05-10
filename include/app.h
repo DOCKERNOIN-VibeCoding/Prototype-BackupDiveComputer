@@ -91,6 +91,8 @@ private:
     uint32_t lastOffgasMs_ = 0;
     uint32_t lastUiMs_ = 0;
 
+    uint32_t chargingEnterMs_ = 0;
+
     uint32_t surfaceIntervalStartMs_ = 0;
     // Used for scenario preload.
     // Example: previous dive ended 84 minutes before simulation start.
@@ -150,6 +152,7 @@ private:
     void updatePostViolationAdvisory();
     void logDiveEvent(DiveEventType type, const char* eventName);
     void drawSurfaceInfoScreen();
+    bool shouldShowChargingSplash(uint32_t now) const;
 };
 
 extern DiveComputerApp app;

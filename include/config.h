@@ -194,6 +194,21 @@
 // 완충 시 배터리 아이콘 / FULL 교대 표시 주기
 #define CHARGING_FULL_BLINK_INTERVAL_MS 1000UL
 
+// ------------------------------------------------------------
+// Splash / Logo display
+// ------------------------------------------------------------
+
+// 부팅 시 로고 표시 시간
+#define SPLASH_BOOT_DISPLAY_MS 1500UL
+
+// 충전 중 로고 표시 주기: 1분마다
+#define CHARGING_SPLASH_INTERVAL_MS 60000UL
+
+// 충전 중 로고 표시 시간: 3초
+#define CHARGING_SPLASH_DURATION_MS 3000UL
+
+// Qi 접촉 / Charging 상태 진입 직후 로고 표시 시간
+#define CHARGING_WAKE_SPLASH_DURATION_MS 3000UL
 
 
 // ============================================================

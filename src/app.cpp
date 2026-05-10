@@ -38,7 +38,7 @@ void DiveComputerApp::begin() {
     // Apply virtual previous dive log from scenario file.
     applyScenarioPreload();
 
-    delay(1000);
+    delay(SPLASH_BOOT_DISPLAY_MS);
 }
 
 void DiveComputerApp::update() {
@@ -71,7 +71,8 @@ void DiveComputerApp::update() {
             break;
 
         case SystemState::Charging:
-            handleCharging();
+            Serial.println("[STATE] CHARGING");
+            chargingEnterMs_ = millis();
             break;
     }
 
@@ -276,6 +277,38 @@ void DiveComputerApp::handleSurface() {
         lastUiMs_ = now;
         drawSurfaceInfoScreen();
     }
+}
+
+bool DiveComputerApp::shouldShowChargingSplash(uint32_t now) const {
+    if (state_ != SystemState::Charging) {
+        return false;
+    }
+
+    // DECO violation advisory가 있으면 로고보다 안전 정보 우선
+    if (postViolationAdvisory_ || activeDecoViolation_) {
+        return false;
+    }
+
+    // Battery low popup이 활성화되어 있으면 로고 생략
+    if (batteryLowPopupUntilMs_ != 0 &&
+        now < batteryLowPopupUntilMs_) {
+        return false;
+    }
+
+    if (chargingEnterMs_ == 0) {
+        return false;
+    }
+
+    uint32_t elapsed = now - chargingEnterMs_;
+
+    // Charging 상태 진입 직후 3초 표시
+    if (elapsed < CHARGING_WAKE_SPLASH_DURATION_MS) {
+        return true;
+    }
+
+    // 이후 1분마다 3초 표시
+    return (elapsed % CHARGING_SPLASH_INTERVAL_MS) <
+           CHARGING_SPLASH_DURATION_MS;
 }
 
 void DiveComputerApp::startDive() {
@@ -1078,9 +1111,15 @@ void DiveComputerApp::handleCharging() {
 
     if (now - lastUiMs_ >= UI_UPDATE_INTERVAL_MS) {
         lastUiMs_ = now;
-        drawSurfaceInfoScreen();
+
+        if (shouldShowChargingSplash(now)) {
+            uiDrawSplashLogo();
+        } else {
+            drawSurfaceInfoScreen();
+        }
     }
 }
+
 
 uint16_t DiveComputerApp::calcNormalTTSMin() const {
     float depth = dive_.depthM;

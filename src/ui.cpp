@@ -1,5 +1,6 @@
 #include "ui.h"
 #include "config.h"
+#include "splash_logo.h"
 
 #include <Wire.h>
 #include <string.h>
@@ -575,22 +576,32 @@ void uiBegin() {
 }
 
 
-void uiSplash() {
+void uiDrawSplashLogo() {
     u8g2.clearBuffer();
 
-    u8g2.setFont(u8g2_font_helvR10_tr);
+    int x = 0;
+    int y = 0;
 
-    const char* t1 = "BACKUP";
-    const char* t2 = "DIVE COMPUTER";
+    if (splash_logo_width < LCD_WIDTH) {
+        x = (LCD_WIDTH - splash_logo_width) / 2;
+    }
 
-    u8g2.drawStr((128 - u8g2.getStrWidth(t1)) / 2, 18, t1);
-    u8g2.drawStr((128 - u8g2.getStrWidth(t2)) / 2, 36, t2);
+    if (splash_logo_height < LCD_HEIGHT) {
+        y = (LCD_HEIGHT - splash_logo_height) / 2;
+    }
 
-    u8g2.setFont(u8g2_font_5x7_tr);
-    u8g2.drawStr(26, 56, FW_VERSION);
+    u8g2.drawXBMP(x,
+                  y,
+                  splash_logo_width,
+                  splash_logo_height,
+                  splash_logo_bits);
 
-    u8g2.drawFrame(0, 0, 128, 64);
     u8g2.sendBuffer();
+}
+
+
+void uiSplash() {
+    uiDrawSplashLogo();
 }
 
 
