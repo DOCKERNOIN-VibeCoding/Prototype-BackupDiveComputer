@@ -71,8 +71,7 @@ void DiveComputerApp::update() {
             break;
 
         case SystemState::Charging:
-            Serial.println("[STATE] CHARGING");
-            chargingEnterMs_ = millis();
+            handleCharging();
             break;
     }
 
@@ -106,6 +105,8 @@ void DiveComputerApp::setState(SystemState newState) {
 
         case SystemState::Charging:
             Serial.println("[STATE] CHARGING");
+            chargingEnterMs_ = millis();
+            lastUiMs_ = 0;
             break;
     }
 }
