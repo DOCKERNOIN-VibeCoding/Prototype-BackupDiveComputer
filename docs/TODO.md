@@ -25,6 +25,20 @@ v1.3의 핵심 방향:
 10. 감압 위반 후에도 hard lockout 없이 계산과 경고를 계속 제공
 ```
 
+### v1.3.5-dev 이후 남은 작업
+
+- [ ] DECO violation advisory 상태를 재부팅 후에도 복원
+- [ ] `postViolationAdvisoryEndEpochSec_`를 로그 또는 NVS에 저장
+- [ ] `activeDecoViolation_`를 로그 또는 NVS에 저장
+- [ ] missed stop depth/remain 값을 저장
+- [ ] DiveEvent를 compact log에 실제 저장
+- [ ] `eventCount`를 실제 이벤트 개수로 반영
+- [ ] `logDiveEvent()`를 Serial 출력에서 storage 기록 구조로 확장
+- [ ] DECO.VIOL Surface 교대 표시를 Wokwi에서 검증
+- [ ] MISSED DECO alert 30초 표시 검증
+- [ ] 출수 60초 + alert 30초 후 SURFACE 전환 검증
+- [ ] re-entry 후 DECO clear 시 advisory가 계속 유지되는지 검증
+
 ---
 
 ## 1. 문서 정리
@@ -433,26 +447,27 @@ Hard lockout 없음
 
 작업 항목:
 
-- [ ] `activeDecoViolation` 상태 추가
-- [ ] `postViolationAdvisory` 상태 추가
-- [ ] `advisoryEndEpochSec` 추가
+- [x] `activeDecoViolation` 상태 추가
+- [x] `postViolationAdvisory` 상태 추가
+- [x] `advisoryEndEpochSec` 추가
 - [ ] `missedStopDepthM` 추가
 - [ ] `missedStopRemainSec` 추가
-- [ ] `reentryCount` 추가
-- [ ] `clearedAfterReentry` 추가
-- [ ] 감압정지 미완료 출수 감지
-- [ ] 미완료 출수 시 `activeDecoViolation = true`
-- [ ] 미완료 출수 시 48시간 advisory 시작
+- [x] `reentryCount` 추가
+- [x] `clearedAfterReentry` 추가
+- [x] 감압정지 미완료 출수 감지
+- [x] 미완료 출수 시 `activeDecoViolation = true`
+- [x] 미완료 출수 시 48시간 advisory 시작
 - [ ] Surface 화면에 `MISSED DECO` 표시
 - [ ] Surface 화면에 `NO DIVE ADVISED` 표시
-- [ ] Surface 화면에 advisory 남은 시간 표시
-- [ ] 48시간 advisory 중에도 hard lockout 하지 않음
-- [ ] 48시간 advisory 중 재입수 시 `NO DIVE`보다 DECO.STOP 행동 지시 우선
-- [ ] 재입수 시 tissue state 유지
-- [ ] 재입수 시 DECO.STOP 재계산 계속
-- [ ] 재입수 후 필요한 감압정지 완료 시 `activeDecoViolation` clear
-- [ ] `postViolationAdvisory`는 48시간 동안 유지
-- [ ] advisory 종료 시 event log 기록
+- [x] Surface 화면에 advisory 남은 시간 표시
+- [x] 48시간 advisory 중에도 hard lockout 하지 않음
+- [x] 48시간 advisory 중 재입수 시 `NO DIVE`보다 DECO.STOP 행동 지시 우선
+- [x] 재입수 시 tissue state 유지
+- [x] 재입수 시 DECO.STOP 재계산 계속
+- [x] 재입수 후 필요한 감압정지 완료 시 `activeDecoViolation` clear
+- [x] `postViolationAdvisory`는 48시간 동안 유지
+- [x] advisory 종료 시 event 발생/Serial log 출력
+- [ ] advisory 종료 event를 compact log에 영구 저장
 - [ ] DAN 등은 재입수를 권장하지 않음을 문서에 명시
 - [ ] 이 기능은 재입수를 권장하는 기능이 아니라 이미 재입수한 경우 정보를 제공하는 기능임을 명시
 
@@ -511,17 +526,16 @@ DECO.STOP과 S-STOP은 분리한다.
 
 ## 15. 로그 저장 구조
 
-- [ ] `include/log_format.h` 추가
-- [ ] `DiveLogHeader` 구조 정의
-- [ ] `DiveSample` 구조 정의
-- [ ] `DiveEvent` 구조 정의
-- [ ] 로그 magic/version 정의
-- [ ] sample 저장 단위 결정
-- [ ] depth cm 단위 저장 결정
-- [ ] temp deciC 단위 저장 결정
-- [ ] GPS lat/lon E7 저장 결정
-- [ ] timeStatus 저장 필드 추가
-- [ ] timeSessionId 저장 필드 추가
+- [x] `include/log_format.h` 추가
+- [x] `DiveLogHeader` 구조 정의
+- [x] `DiveSample` 구조 정의
+- [x] `DiveEvent` 구조 정의
+- [x] 로그 magic/version 정의
+- [x] depth cm 단위 저장 결정
+- [x] temp deciC 단위 저장 결정
+- [x] GPS lat/lon E7 저장 결정
+- [x] timeStatus 저장 필드 추가
+- [x] timeSessionId 저장 필드 추가
 - [ ] gas FO2 저장 필드 추가
 - [ ] ppO2 max 저장 필드 추가
 - [ ] deco violation flag 저장 필드 추가
@@ -531,22 +545,24 @@ DECO.STOP과 S-STOP은 분리한다.
 
 ## 16. 로그 저장 기능
 
-- [ ] `include/log_storage.h` 추가
-- [ ] `src/log_storage.cpp` 추가
+- [x] `include/log_storage.h` 추가
+- [x] `src/log_storage.cpp` 추가
 - [ ] 다이빙 시작 시 log start 정보 생성
 - [ ] 다이빙 중 sample 저장
 - [ ] 이벤트 저장
-- [ ] 다이빙 종료 시 log header 확정
+- [x] 다이빙 종료 시 log header 확정
 - [ ] 내부 flash 저장 방식 결정
-- [ ] LittleFS 사용 여부 결정
+- [x] LittleFS 사용 구조 추가
 - [ ] NVS 사용 범위 결정
-- [ ] 부팅 시 마지막 로그 읽기
-- [ ] 마지막 로그로 Surface 화면 preload
+- [x] 부팅 시 마지막 로그 읽기
+- [x] 마지막 로그로 Surface 화면 preload
 - [ ] gas FO2를 로그에 저장
 - [ ] MOD warning event 저장
 - [ ] DECO.STOP started event 저장
 - [ ] DECO.STOP completed event 저장
 - [ ] MISSED DECO event 저장
+- [ ] 다이빙 중 sample 영구 저장
+- [ ] 이벤트 영구 저장
 
 필수 event 후보:
 

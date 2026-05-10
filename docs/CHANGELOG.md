@@ -4,33 +4,46 @@
 본 문서는 BackupDiveComputer 프로젝트의 주요 변경 사항을 기록한다.
 ---
 
-## v1.3.5-dev
-
-### Added
-- Added DECO.STOP violation advisory flow.
-- Added 48h post-violation advisory policy.
-- Added DECO.VIOL display on SURFACE mode.
-- Added re-entry policy after missed decompression.
-- Added event definitions for deco violation lifecycle.
-
-### Changed
-- DECO.STOP no longer causes hard lockout.
-- SURFACE mode continues to display previous dive information after deco violation.
-- DECO.STOP margin policy refined with stricter shallow-side handling.
-- Safety stop and decompression stop handling separated more clearly.
-
-### Fixed
-- Prevented invalid DECO.STOP 0m display.
-- Improved final surfacing detection after missed stop.
-
 ## Unreleased
 
 ### Added
-- Add `docs/HARDWARE_PROTOTYPE.md` to document the real prototype hardware specification, ESP32-S3 pin map, ST7567A SPI LCD wiring, MS5837 wiring, GPS wiring, battery/charging policy, and open hardware validation items.
-- Add `docs/HARDWARE_PROTOTYPE.json` for machine-readable hardware pin map, wiring table, components, power rails, and validation checklist.
+- Pending items after v1.3.5-dev.
+
+## v1.3.5-dev
+
+Development snapshot tag.
+
+### Added
+- Added DECO.STOP violation advisory flow.
+- Added 48h post-violation advisory state.
+- Added `DECO.VIOL` alternating display on SURFACE mode.
+- Added `MISSED DECO` post-dive alert screen.
+- Added re-entry handling after missed decompression.
+- Added DECO violation event types.
+- Added asymmetric DECO.STOP margins.
+
+### Changed
+- DECO.STOP violation no longer causes hard lockout.
+- SURFACE mode continues to show previous dive information after a violation.
+- DECO.STOP margin changed from symmetric window to shallow/deep asymmetric policy.
+- Safety Stop and DECO.STOP handling clarified.
+
+### Fixed
+- Prevented invalid `DECO.STOP 0m` display.
+- Improved final surfacing detection after missed stop.
+- Fixed UI function signature issues around surface/advisory display.
+
+## v1.3-dev
+
+### Added
+- FO2 gas config.
+- Bühlmann FN2 based on FO2.
+- DECO.STOP ladder.
+- CEIL >18m warning.
+- Battery and buzzer updates.
 
 
-## dev/v1.2 - Current
+## dev/v1.2
 
 ### 2026-05-06
 

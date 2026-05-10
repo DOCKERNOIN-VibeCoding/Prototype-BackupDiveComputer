@@ -36,7 +36,7 @@ BackupDiveComputer
 ## 1.2 현재 개발 버전
 
 ```text
-v1.3
+v1.3.5-dev
 ```
 
 ## 1.3 현재 개발 브랜치
@@ -377,10 +377,26 @@ beep test
      ```
 
 6. **missed deco / 48h advisory 상태 머신 구현**
-   - `activeDecoViolation`
-   - `postViolationAdvisory`
-   - `advisoryEndEpochSec`
-   - Surface 화면에 `MISSED DECO / NO DIVE 48H`
+   현재 구현됨:
+
+    - `activeDecoViolation_`
+    - `postViolationAdvisory_`
+    - `postViolationAdvisoryEndEpochSec_`
+    - `reentryCount_`
+    - `clearedAfterReentry_`
+    - `DECO_VIOLATION_ALERT_DISPLAY_MS = 30000ms`
+    - `uiDrawDecoViolationAlert()`
+    - SURFACE 화면의 `DECO.VIOL` 교대 표시
+    - 감압 위반 후 재입수 이벤트
+    - 감압 clear 후 `EVENT_DECO_CLEARED_AFTER_REENTRY`
+
+   아직 남은 작업:
+
+    - 이벤트를 Serial 출력뿐 아니라 compact log에 실제 저장
+    - advisory 상태를 재부팅 후에도 복원
+    - missed stop depth/remain 값을 log에 저장
+    - 여러 번의 violation/re-entry 시나리오 검증
+
 
 7. **re-entry tissue state 처리 검증**
    - 감압 위반 후 재입수해도 hard lockout 하지 않음
@@ -1343,6 +1359,21 @@ ASCEND
 ---
 
 ## 14.3 stop window
+
+### DECO.STOP margin policy
+
+v1.3.5-dev부터 DECO.STOP 허용 범위는 대칭 ±0.6m가 아니다.
+
+얕은 쪽은 ceiling violation 위험이 있으므로 엄격하게 0.6m만 허용한다.
+
+깊은 쪽은 상대적으로 보수적이므로 1.8m까지 timer 진행을 허용한다.
+다만 stop 수심보다 많이 깊으면 `ASCEND`를 표시한다.
+
+```text
+DECO_STOP_SHALLOW_MARGIN_M = 0.6m
+DECO_STOP_HOLD_MARGIN_M    = 0.6m
+DECO_STOP_DEEP_MARGIN_M    = 1.8m
+
 
 감압정지 타이머는 다이버가 stop window 안에 있을 때만 감소한다.
 

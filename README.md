@@ -64,13 +64,43 @@ profile resume
 
 ## Status
 
-This repository contains an early-stage prototype.
-
-Current baseline version:
+Current development snapshot:
 
 ```text
-BackupDiveComputer_v7.1
+v1.3.5-dev
 ```
+
+Development branch:
+
+```text
+dev/v1.3
+```
+
+## This version is a development snapshot focused on:
+
+- Air / EAN21 single-gas baseline
+- Nitrox-ready FO2 configuration structure
+- Bühlmann ZH-L16 based tissue tracking
+- DECO.STOP ladder: 18m / 15m / 12m / 9m / 6m / 3m
+- CEIL >18m warning state
+- No hard lockout after missed decompression
+- 48h post-violation advisory
+- DECO.VIOL display on SURFACE mode
+- Safety Stop and DECO.STOP separation
+
+
+## Important Safety Policy
+
+This prototype does not lock out the device after a missed decompression stop.
+
+If the diver surfaces with an active decompression obligation, the device shows a strong `MISSED DECO` advisory, starts a 48-hour post-violation advisory, and continues to provide dive information.
+
+This behavior is intentional for a backup dive computer:
+the device should continue to provide depth, time, tissue-state based decompression information, and surface data even after a violation.
+
+This does not mean that re-entry is recommended.
+It only means that if the diver re-enters, the device continues calculations instead of withholding information.
+
 
 ## Decompression Model Notice
 
