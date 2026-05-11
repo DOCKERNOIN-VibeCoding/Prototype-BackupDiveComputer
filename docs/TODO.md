@@ -33,6 +33,10 @@ BackupDiveComputer v1.3의 핵심 방향은 다음과 같다.
 10. 위반 후 48시간 advisory 유지
 11. 재입수 시 tissue state 기반으로 감압 계산 계속 제공
 12. Safety Stop과 DECO.STOP은 명확히 분리
+13. 출수 후 약 4분 이내 재입수는 연속다이빙으로 처리
+14. PostDive → Surface 전환 시점을 실제 다이브 로그 종료 확정 시점으로 사용
+15. GPS/BLE RTS 확보 후 RelativeOnly 로그를 bootCount 기반으로 시간 보정
+16. Qi 충전 중 GPS/BLE 자동 활성화 및 분리 시 자동 OFF
 ```
 
 ---
@@ -313,8 +317,9 @@ BackupDiveComputer v1.3의 핵심 방향은 다음과 같다.
 - [x] 미완료 출수 시 `activeDecoViolation_ = true`
 - [x] 미완료 출수 시 48시간 advisory 시작
 - [x] PostDive 단계에서 `MISSED DECO` alert 화면 표시
-- [x] `DECO_VIOLATION_ALERT_DISPLAY_MS = 30000ms` 추가
-- [x] MISSED DECO alert 30초 후 Surface 전환
+- [ ] DECO violation PostDive도 일반 PostDive와 동일하게 3분 유지하도록 변경
+- [ ] `DECO_VIOLATION_ALERT_DISPLAY_MS`를 Surface 전환 기준에서 제거하거나 UI 강조 시간으로만 재정의
+- [ ] MISSED DECO PostDive 3분 표시 Wokwi 검증
 - [x] Surface 화면에 `DECO.VIOL` 남은 시간 표시
 - [x] Surface 정보는 감압 위반 후에도 계속 표시
 - [x] No hard lockout 정책 반영
@@ -444,6 +449,12 @@ BackupDiveComputer v1.3의 핵심 방향은 다음과 같다.
 - [ ] missed stop depth/remain 저장 필드 추가
 - [ ] reentry count 저장 필드 추가
 - [ ] log format version 2 필요성 검토
+- [ ] bootCount 저장 필드 추가
+- [ ] bootElapsedStartSec 저장 필드 추가
+- [ ] bootElapsedEndSec 저장 필드 추가
+- [ ] timeCorrectionSource 저장 필드 검토
+- [ ] RelativeOnly 로그를 TimeCorrected로 갱신하는 구조 설계
+- [ ] log format v2 전환 필요성 검토
 
 ---
 
@@ -478,6 +489,12 @@ BackupDiveComputer v1.3의 핵심 방향은 다음과 같다.
 - [ ] re-entry event 저장
 - [ ] cleared-after-reentry event 저장
 - [ ] LittleFS 저장 실패 시 fallback 정책 정리
+- [ ] PostDive 진입 시 로그를 확정 저장하지 않고 pending 상태로 유지
+- [ ] PostDive → Surface 전환 시 실제 로그 종료 확정
+- [ ] PostDive 중 재입수 시 기존 로그에 이어 기록
+- [ ] Surface 진입 후 재잠수 시 반복다이빙 로그로 새로 시작
+- [ ] GPS/BLE RTS 획득 후 pending 또는 RelativeOnly 로그 시간 보정
+- [ ] 보정된 로그를 LittleFS에 다시 저장
 
 ---
 
@@ -504,6 +521,16 @@ BackupDiveComputer v1.3의 핵심 방향은 다음과 같다.
 - [ ] GPS 시간이 나중에 잡혔을 때 로그 시간 보정
 - [ ] timeSessionId가 다르면 보정하지 않도록 구현
 - [ ] epoch time이 없을 때 advisory 상대시간 처리 정책 결정
+- [ ] bootCount를 NVS/Preferences에 영구 저장
+- [ ] bootCount 증가 시점 정의
+- [ ] bootElapsedStartSec / bootElapsedEndSec 계산 구현
+- [ ] currentBootElapsedSec helper 구현
+- [ ] RTS 획득 시 bootEpochSec 계산 구현
+- [ ] bootCount mismatch 시 자동 보정 금지 구현
+- [ ] timeSessionId mismatch 시 자동 보정 금지 구현
+- [ ] TimeCorrected 상태로 로그 header 갱신
+- [ ] SyncFailed 상태 전환 조건 정의
+- [ ] GPS time과 BLE time의 우선순위 구현
 
 ---
 
@@ -550,6 +577,11 @@ BackupDiveComputer v1.3의 핵심 방향은 다음과 같다.
 - [ ] 충전 중 BLE 동작 정의
 - [ ] Deep Sleep 사용 시 tissue/advisory/time continuity 영향 검토
 - [ ] 실제 하드웨어 전류 측정
+- [ ] Qi 충전 중 GPS retry-until-fix 정책 구현
+- [ ] Qi 충전 중 BLE advertising 유지 구현
+- [ ] Qi 분리 시 GPS/BLE OFF 구현
+- [ ] Sleep → Qi wake → Splash → Surface → GPS 6회 시도 흐름 구현
+- [ ] 출수 후 GPS 30초 x 6회 시도 구현
 
 ---
 
@@ -569,6 +601,10 @@ BackupDiveComputer v1.3의 핵심 방향은 다음과 같다.
 - [ ] ppO2 max 설정 characteristic 검토
 - [ ] FO2 설정값 NVS 저장 구조 설계
 - [ ] app-configured FO2와 compile-time default 우선순위 결정
+- [ ] BLE app time sync characteristic 설계
+- [ ] BLE time sync를 RTS source로 사용하는 정책 구현
+- [ ] BLE connected 상태와 advertising 상태를 UI top bar에 반영
+- [ ] BLE 연결 중에는 Qi 분리 직후 OFF 지연 여부 정책 결정
 
 ---
 
@@ -692,7 +728,31 @@ BackupDiveComputer v1.3의 핵심 방향은 다음과 같다.
 - [ ] S-STOP missed가 DECO.VIOL로 처리되지 않는지 확인
 - [ ] DECO.STOP과 S-STOP 혼동 없음 확인
 
----
+## 22.9 Continuous / repetitive dive 테스트
+
+- [ ] 수심 <0.5m 30초 후 재잠수 시 같은 Dive 유지 확인
+- [ ] 수심 <0.5m 60초 후 PostDive 진입 확인
+- [ ] PostDive 3분 이내 재잠수 시 연속다이빙 처리 확인
+- [ ] PostDive 중 재잠수 시 새 로그를 만들지 않는지 확인
+- [ ] PostDive 중 재잠수 시 기존 로그에 샘플이 이어지는지 확인
+- [ ] PostDive 3분 경과 후 Surface 전환 확인
+- [ ] Surface 진입 이후 재잠수 시 반복다이빙으로 새 로그 생성 확인
+- [ ] 반복다이빙에서도 tissue loading이 이어지는지 확인
+
+## 22.10 GPS/BLE RTS 및 로그 시간 보정 테스트
+
+- [ ] RTS 없이 다이빙 시작 시 RelativeOnly 로그 생성 확인
+- [ ] RelativeOnly 로그에 bootCount 저장 확인
+- [ ] RelativeOnly 로그에 bootElapsedStartSec 저장 확인
+- [ ] RelativeOnly 로그에 bootElapsedEndSec 저장 확인
+- [ ] Surface에서 GPS RTS 획득 시 직전 로그 시간 보정 확인
+- [ ] 보정 성공 시 timeStatus가 TimeCorrected로 변경되는지 확인
+- [ ] bootCount가 다른 로그는 자동 보정하지 않는지 확인
+- [ ] timeSessionId가 다른 로그는 자동 보정하지 않는지 확인
+- [ ] GPS 실패 30초 x 6회 후 GPS OFF 확인
+- [ ] Qi 충전 중 BLE advertising 표시 확인
+- [ ] BLE connected 시 B 고정 표시 확인
+
 
 # 23. Hardware Prototype
 
@@ -762,17 +822,56 @@ git push origin -f v1.3.5-dev
 
 # 25. v1.3.5-dev 이후 우선순위
 
-## P0 - 지금 바로 확인
+## P0 - Continuous dive / PostDive / 로그 종료 기준 정리
 
-- [ ] `pio run -e wokwi` 성공 확인
-- [ ] Wokwi 실행 확인
-- [ ] Surface 화면 확인
-- [ ] MISSED DECO alert 30초 확인
-- [ ] Surface `DECO.VIOL` 교대 표시 확인
-- [ ] DECO.STOP margin timer 동작 확인
-- [ ] `DECO.STOP 0m` 미표시 확인
+- [ ] Dive 종료 후보: 수심 <0.5m 60초 유지 확인
+- [ ] Dive → PostDive 전환 시 로그를 확정 종료하지 않도록 수정
+- [ ] 일반 PostDive 3분 유지 확인
+- [ ] DECO violation PostDive도 3분 유지하도록 수정
+- [ ] PostDive → Surface 전환 시 실제 로그 종료 확정
+- [ ] PostDive 중 재입수 시 연속다이빙으로 처리
+- [ ] PostDive 중 재입수 시 같은 로그에 이어 기록
+- [ ] Surface 진입 후 재입수 시 반복다이빙으로 새 로그 생성
+- [ ] 반복다이빙에서도 tissue loading 유지
 
-## P1 - 감압 위반 정책 안정화
+## P1 - GPS/BLE 전원 제어 및 상태 표시
+
+- [ ] Surface/PostDive/Charging 상단바 GPS/BLE 표시 확인
+- [ ] GPS searching 중 G 깜빡임 구현
+- [ ] GPS valid / RTS 완료 시 G 고정 표시 구현
+- [ ] GPS 실패 또는 OFF 시 - 표시 구현
+- [ ] BLE advertising 중 B 깜빡임 구현
+- [ ] BLE connected 시 B 고정 표시 구현
+- [ ] BLE OFF 시 - 표시 구현
+- [ ] Qi 충전 중 GPS retry-until-fix 구현
+- [ ] Qi 충전 중 BLE advertising 유지 구현
+- [ ] Qi 분리 시 GPS/BLE OFF 구현
+- [ ] 출수 후 GPS 30초 x 6회 시도 구현
+- [ ] Sleep/Qi wake 후 Surface 진입 및 GPS 6회 시도 구현
+
+## P2 - RTS / 로그 시간 보정
+
+- [ ] bootCount 영구 저장 구현
+- [ ] bootElapsedStartSec / bootElapsedEndSec 로그 저장 구현
+- [ ] timeSessionId 생성 로직 구현
+- [ ] RTS 획득 시 bootEpochSec 계산 구현
+- [ ] RelativeOnly 로그 시간 보정 구현
+- [ ] 보정 성공 시 TimeCorrected로 갱신
+- [ ] bootCount mismatch 시 자동 보정 금지
+- [ ] timeSessionId mismatch 시 자동 보정 금지
+- [ ] GPS/BLE time source 우선순위 구현
+- [ ] 보정된 로그를 LittleFS에 재저장
+
+## P3 - 로그 포맷 v2 / 샘플 / 이벤트 저장
+
+- [ ] log format v2 필요성 결정
+- [ ] DiveSample 영구 저장
+- [ ] DiveEvent 영구 저장
+- [ ] eventCount 반영
+- [ ] sampleCount 검증
+- [ ] violation/advisory 정보를 log header 또는 별도 record에 저장
+
+## P4 - 감압 위반 정책 안정화
 
 - [ ] DECO violation scenario 작성
 - [ ] re-entry scenario 작성
@@ -781,15 +880,7 @@ git push origin -f v1.3.5-dev
 - [ ] violation 상태 재부팅 복원 설계
 - [ ] advisoryEndEpochSec 저장 구조 설계
 
-## P2 - 로그 고도화
-
-- [ ] DiveSample 영구 저장
-- [ ] DiveEvent 영구 저장
-- [ ] eventCount 반영
-- [ ] sampleCount 검증
-- [ ] violation/advisory 정보를 log header 또는 별도 record에 저장
-
-## P3 - Nitrox / MOD UI
+## P5 - Nitrox / MOD UI
 
 - [ ] FO2 >21% 표시
 - [ ] MOD 표시
@@ -797,14 +888,14 @@ git push origin -f v1.3.5-dev
 - [ ] EAN32 scenario
 - [ ] MOD exceeded scenario
 
-## P4 - BLE / 앱 / 설정
+## P6 - BLE / 앱 / 설정
 
 - [ ] BLE log download 설계
+- [ ] BLE time sync 설계
 - [ ] FO2 앱 설정 설계
 - [ ] NVS 저장 구조 설계
-- [ ] time sync 설계
 
-## P5 - 실제 하드웨어
+## P7 - 실제 하드웨어
 
 - [ ] LCD 실물 테스트
 - [ ] sensor 실물 테스트

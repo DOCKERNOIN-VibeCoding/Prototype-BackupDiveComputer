@@ -148,25 +148,234 @@ lockout보다 정보 제공 우선
 ```
 
 # 2.3 하드웨어 제어 소프트웨어의 주요 구동 원칙
-- 다이빙컴퓨터가 Qi 충전중일 떄
-    A. GPS를 켜서 위치 및 시간 정보를 얻을때까지 재시도 한다.
-    B. BLE를 켜서 켜서 스마트폰의 앱과의 연결을 항시 준비한다.
-    C. Qi 충전기와 분리시에는 GPS와 BLE 모두 off 한다.
 
-- 다이빙이 끝나고 출수 한 후
-    A. 출수한 후, GPS를 켜서 위치 및 시간 정보를 얻기 위해 시도한다. (30초씩 6회 시도 후, 실패시 off)
+BackupDiveComputer는 버튼 없는 밀폐형 장치이므로 GPS, BLE, 충전, 로그 시간 보정은 모두 자동으로 동작해야 한다.
 
-- 다이빙컴퓨터를 잠깐 Qi 충전기에 갖다 대었을 때
-    A. Sleep모드에서 꺠어나 Surface모드로 진입한다. (진입시 Splash 화면 잠시 표시)
-    B. 출수시와 동일하게, Sleep모드에서 꺠어나 Surface모드로 진입시 GPS 수신을 시도 한다. (30초씩 6회 시도 후, 실패시 off)
+### 2.3.1 Qi 충전 중 동작
 
-- 다이빙 로그기록 시간 업데이트 방법
-    A. 현재 다이빙컴퓨터가 RTS (Real Time Sync)가 이루어진 상태라면, 다이빙 중 실제 시간을 반영하여 다이브 로그에 실제 시간 기록
-    B. 만약 RTS가 되지 않은 상태에서 다이빙을 마쳤을 때, 다이빙 출수 후 Surface모드에서 GPS를 통해 RTS가 이루어지면 직전 다이빙 기록을 검토하여 실제 시간으로 수정하여 기록합니다.
-    C. 다이빙 컴퓨터는 전원이 꺼졌다가 다시 켜질때마다 부팅 카운터를 기록하고, 부팅 후 지난 시간을 항시 기록한다.
-      C-1. 다이빙 컴퓨터에 현재 RTS가 이루어지지 않은 상태일 경우, 다이브로그에는 현재 다이브컴퓨터의 '부팅카운터'와 '부팅 후 지난 시간'을 별도 필드에 저장한다.
-      C-2. 다이빙 컴퓨터가 RTS가 이루어질 경우, 이전 다이브로그를 확인하여, 로그내 '부팅카운터'가 현재 다이브컴퓨터의 '부팅카운터'가 일치할 경우에, 부팅후 지난 시간을 현재시간을 기준 역산하여 다이브 로그에 실제 시간을 계산하여 다이빙 시간 필드에 실제 시간으로 정정하여 기록한다.
-      C-3. 만약 '부팅 카운터'가 다르다면, 이는 해당 로그를 작성한 시점이 다이빙컴퓨터가 새로 재부팅된 이전의 기록이므로 정확한 시간을 역산할 수 없으므로 (컴퓨터가 어느시간만큼 꺼져있었는지 추정할 수 없으므로) 해당 로그의 다이빙 시간은 수정하지 않는다.
+다이빙컴퓨터가 Qi 충전 중일 때는 다음 정책을 따른다.
+
+```text
+1. GPS를 켠다.
+2. 위치 정보와 실제 시간 정보를 얻을 때까지 재시도한다.
+3. BLE를 켠다.
+4. 스마트폰 앱과 연결할 수 있도록 BLE advertising 또는 connection-ready 상태를 유지한다.
+5. Qi 충전기에서 분리되면 GPS와 BLE를 모두 끈다.
+```
+
+단, 다음 경우에는 예외적으로 GPS/BLE 종료를 지연할 수 있다.
+
+```text
+BLE 로그 다운로드가 진행 중인 경우
+BLE 설정 변경이 진행 중인 경우
+GPS fix 직후 로그 시간 보정이 아직 완료되지 않은 경우
+```
+
+충전 중 UI 표시 정책:
+
+```text
+GPS 수신 시도 중: G 깜빡임
+GPS fix / RTS 완료: G 고정 표시
+GPS off 또는 실패 후 중지: - 표시
+
+BLE advertising / 연결 대기 중: B 깜빡임
+BLE connected: B 고정 표시
+BLE off: - 표시
+```
+
+### 2.3.2 다이빙 중 동작
+
+다이빙 중에는 전력 소모와 무선 통신 불필요성을 고려하여 다음 정책을 따른다.
+
+```text
+GPS OFF
+BLE OFF
+Wi-Fi OFF
+수심/시간/감압 계산 우선
+로그 샘플 기록 우선
+```
+
+다이빙 중에는 GPS 위치나 BLE 연결을 시도하지 않는다.
+
+### 2.3.3 출수 후 GPS 동작
+
+다이빙 후 출수하면 GPS를 켜서 위치 정보와 실제 시간 정보를 얻기 위해 시도한다.
+
+정책:
+
+```text
+1회 시도 시간: 30초
+최대 시도 횟수: 6회
+총 최대 시도 시간: 180초
+```
+
+GPS fix 또는 RTS 획득에 성공하면 다음을 수행한다.
+
+```text
+출수 위치 저장
+실제 시간 동기화 상태 갱신
+RTS가 없던 직전 다이브 로그의 시간 보정 시도
+보정 성공 시 로그의 timeStatus를 TimeCorrected로 변경
+```
+
+6회 모두 실패하면 다음을 수행한다.
+
+```text
+GPS OFF
+해당 로그는 RelativeOnly 또는 SyncFailed 상태 유지
+충전 중이 아니라면 추가 GPS 재시도 중지
+```
+
+### 2.3.4 잠깐 Qi 충전기에 갖다 댔을 때의 wake 동작
+
+Sleep 또는 low-power 상태에서 장치를 잠깐 Qi 충전기에 갖다 대면 다음 순서로 동작한다.
+
+```text
+1. 장치가 wake 된다.
+2. Splash 화면을 잠시 표시한다.
+3. Surface 모드로 진입한다.
+4. GPS 수신을 시도한다.
+5. GPS 수신 정책은 출수 후 GPS 동작과 동일하게 30초씩 최대 6회 시도한다.
+6. 충전이 계속 유지되면 BLE도 켜고 앱 연결 대기 상태를 유지한다.
+7. Qi 충전기에서 분리되면 GPS와 BLE를 끈다.
+```
+
+### 2.3.5 RTS, GPS time, BLE time 용어
+
+본 문서에서 RTS는 Real Time Sync를 의미한다.
+
+RTS가 성립하는 경우:
+
+```text
+GPS에서 유효한 UTC time을 얻은 경우
+BLE 앱에서 신뢰 가능한 현재 시간을 받은 경우
+```
+
+RTS가 없는 경우:
+
+```text
+실제 날짜/시간을 알 수 없음
+다이빙 시작/종료 시각은 epoch로 확정할 수 없음
+부팅 후 경과시간 기준으로만 상대 기록 가능
+```
+
+RTS 우선순위는 다음과 같다.
+
+```text
+1. GPS time
+2. BLE app time
+3. 시뮬레이션 epoch time
+4. boot elapsed relative time
+```
+
+Wokwi simulation에서는 시뮬레이션 epoch를 RTS 대체값으로 사용할 수 있다.
+실제 하드웨어에서는 GPS 또는 BLE 시간이 없는 경우 RTS가 없는 것으로 본다.
+
+### 2.3.6 로그 시간 기록 및 사후 보정 정책
+
+다이브 로그의 시간 기록은 다음 정책을 따른다.
+
+#### RTS가 있는 상태에서 다이빙한 경우
+
+다이빙 시작 시점에 RTS가 이미 있으면 로그에는 실제 epoch 시간을 기록한다.
+
+```text
+timeStatus = TimeSynced
+startEpochSec = 실제 시작 epoch
+endEpochSec = 실제 종료 epoch
+durationSec = 실제 다이빙 시간
+```
+
+#### RTS가 없는 상태에서 다이빙한 경우
+
+RTS가 없는 상태에서 다이빙을 시작하거나 종료하면 실제 날짜/시간을 확정하지 않는다.
+
+이 경우 로그에는 다음 정보를 저장한다.
+
+```text
+timeStatus = RelativeOnly
+startEpochSec = 0 또는 임시값
+endEpochSec = 0 또는 임시값
+durationSec = 다이빙 지속 시간
+timeSessionId = 현재 시간 세션 ID
+bootCount = 현재 부팅 카운터
+bootElapsedStartSec = 부팅 후 다이빙 시작까지의 경과 시간
+bootElapsedEndSec = 부팅 후 다이빙 종료까지의 경과 시간
+```
+
+#### 나중에 GPS 또는 BLE로 RTS가 확보된 경우
+
+Surface 모드 또는 충전 중 GPS/BLE로 RTS가 확보되면, 시스템은 보정 가능한 이전 로그를 검사한다.
+
+보정 가능 조건:
+
+```text
+로그의 timeStatus가 RelativeOnly일 것
+로그의 bootCount가 현재 bootCount와 같을 것
+로그의 timeSessionId가 현재 timeSessionId와 같을 것
+현재 boot elapsed time을 알고 있을 것
+현재 RTS epoch를 알고 있을 것
+```
+
+보정 계산:
+
+```text
+bootEpochSec = currentRtsEpochSec - currentBootElapsedSec
+
+correctedStartEpochSec = bootEpochSec + bootElapsedStartSec
+correctedEndEpochSec   = bootEpochSec + bootElapsedEndSec
+```
+
+보정 성공 시:
+
+```text
+startEpochSec = correctedStartEpochSec
+endEpochSec = correctedEndEpochSec
+timeStatus = TimeCorrected
+```
+
+보정 실패 시:
+
+```text
+timeStatus = RelativeOnly 유지
+또는 명확히 실패가 확정된 경우 SyncFailed로 변경
+```
+
+#### bootCount가 다른 경우
+
+로그의 bootCount가 현재 bootCount와 다르면 자동 시간 보정을 하지 않는다.
+
+이유:
+
+```text
+장치가 꺼져 있던 시간을 알 수 없기 때문이다.
+예를 들어 장치가 한 달 동안 꺼져 있었다면,
+부팅 후 경과시간만으로 과거 로그의 실제 시간을 역산할 수 없다.
+```
+
+따라서 bootCount가 다른 로그는 사용자가 앱에서 수동 보정하거나,
+별도의 외부 로그와 대조하지 않는 한 자동 수정하지 않는다.
+
+### 2.3.7 GPS/BLE 상태 표시 원칙
+
+상단바에는 GPS와 BLE 상태를 간결하게 표시한다.
+
+표시 정책:
+
+```text
+GPS searching / trying RTS: G 깜빡임
+GPS fix / RTS valid:        G 고정
+GPS off / failed:           -
+
+BLE advertising:            B 깜빡임
+BLE connected:              B 고정
+BLE off:                    -
+```
+
+이 표시는 Surface, PostDive, Charging 화면에서 우선 적용한다.
+
+Dive 화면에서는 수심/시간/감압 정보가 우선이므로 GPS/BLE 표시를 생략할 수 있다.
+
 
 ---
 
@@ -846,9 +1055,9 @@ WAIT
 
 ---
 
-# 12. Final surfacing detection
+# 12. Final surfacing detection / Continuous dive policy
 
-## 12.1 다이빙 종료 기준
+## 12.1 다이빙 종료 후보 기준
 
 다이빙 종료는 수면 도달 즉시 확정하지 않는다.
 
@@ -862,24 +1071,16 @@ WAIT
 즉:
 
 ```text
-수심 < 0.5m 상태가 60초 유지되면 최종 출수로 판단한다.
+수심 < 0.5m 상태가 60초 유지되면
+Dive 상태에서 PostDive 상태로 전환한다.
 ```
 
----
+이 시점은 사용자가 실제로 다이빙을 완전히 끝냈다고 확정하는 시점이 아니라,
+"출수 후보" 또는 "tentative surfacing" 상태로 본다.
 
-## 12.2 일반 출수 흐름
+## 12.2 PostDive holding window
 
-```text
-수심 < 0.5m
-↓
-60초 유지
-↓
-endDive()
-↓
-PostDive
-↓
-일정 시간 후 Surface
-```
+PostDive는 짧은 수면 체류 후 재입수하는 상황을 하나의 연속 다이빙으로 처리하기 위한 holding window 역할을 한다.
 
 일반 PostDive 표시 시간:
 
@@ -887,7 +1088,104 @@ PostDive
 #define POST_DIVE_DISPLAY_MS 180000UL
 ```
 
-즉 일반적으로 3분이다.
+즉:
+
+```text
+PostDive는 3분 동안 유지된다.
+```
+
+따라서 실제 수면 도달 후 연속다이빙으로 간주할 수 있는 총 시간은 다음과 같다.
+
+```text
+Dive 상태에서 수심 <0.5m 유지 대기: 60초
+PostDive holding window: 180초
+총 연속다이빙 판정 여유: 약 240초 = 약 4분
+```
+
+## 12.3 연속다이빙 판단
+
+다음 조건에서 재잠수하면 연속다이빙으로 처리한다.
+
+```text
+Dive 상태에서 아직 60초 출수 확정 전 재잠수
+또는
+PostDive holding window 안에서 재잠수
+```
+
+연속다이빙 처리 정책:
+
+```text
+새 다이브 로그를 만들지 않는다.
+diveNumber를 증가시키지 않는다.
+기존 다이빙 로그에 샘플을 이어서 기록한다.
+수면에 있었던 구간은 depth 0m 또는 surface segment로 기록할 수 있다.
+tissue loading은 계속 이어서 계산한다.
+dive time 정책은 별도로 정하되, 로그에는 연속 이벤트를 남길 수 있다.
+```
+
+## 12.4 실제 다이빙 종료 확정 시점
+
+실제 다이빙 로그의 종료는 PostDive에서 Surface로 전환되는 시점에 확정한다.
+
+흐름:
+
+```text
+수심 <0.5m
+↓
+60초 유지
+↓
+Dive → PostDive
+↓
+3분 동안 재입수 없음
+↓
+PostDive → Surface
+↓
+이 시점을 실제 로그 종료 확정 시점으로 처리
+```
+
+이 정책의 목적:
+
+```text
+짧은 수면 체류 후 재입수를 별도 반복다이빙으로 잘못 나누지 않는다.
+교육, 체크아웃, 구조훈련, 얕은 수면 체류 상황에서 로그가 불필요하게 쪼개지는 것을 방지한다.
+```
+
+## 12.5 반복다이빙 판단
+
+Surface 모드에 진입한 이후 다시 잠수하면 반복다이빙으로 처리한다.
+
+반복다이빙 처리 정책:
+
+```text
+새 다이브 로그를 시작한다.
+diveNumber를 증가시킨다.
+이전 tissue loading은 유지한다.
+Surface interval은 이전 로그 종료 시점부터 계산한다.
+No-Fly, desaturation, post-violation advisory는 계속 유지한다.
+```
+
+즉:
+
+```text
+PostDive 안에서 재입수 = 연속다이빙
+Surface 진입 후 재입수 = 반복다이빙
+```
+
+## 12.6 용어 정리
+
+본 프로젝트에서 사용하는 용어는 다음과 같다.
+
+```text
+Continuous dive / 연속다이빙:
+  약 4분 이내의 짧은 수면 체류 후 재입수하여 하나의 로그로 이어지는 다이빙
+
+Repetitive dive / 반복다이빙:
+  Surface 모드 진입 이후 새 로그로 시작하지만,
+  이전 다이빙의 tissue loading을 이어받는 다이빙
+
+Final log close / 로그 종료 확정:
+  PostDive에서 Surface로 전환되는 시점
+```
 
 ---
 
@@ -941,16 +1239,16 @@ if (dive_.decoEntered && dive_.ceilingDepthM > 0.5f) {
 
 ## 13.3 Missed DECO surfacing flow
 
-DECO.STOP 미완료 상태에서 출수한 경우:
+DECO.STOP 미완료 상태에서 출수한 경우에도 최종 종료 확정은 일반 출수와 동일한 PostDive holding window를 따른다.
+
+흐름:
 
 ```text
-수심 < 0.5m
+수심 <0.5m
 ↓
 60초 유지
 ↓
-최종 출수 확정
-↓
-endDive()
+Dive → PostDive
 ↓
 active ceiling 확인
 ↓
@@ -959,26 +1257,61 @@ DECO violation 설정
 48시간 advisory 시작
 ↓
 MISSED DECO alert 표시
-↓ 30초
-SURFACE 화면 전환
 ↓
-SURFACE 화면에서 DECO.VIOL 남은 시간 표시
+PostDive 3분 유지
+↓
+재입수 없으면 Surface 전환
+↓
+Surface 화면에서 DECO.VIOL 남은 시간 표시
 ```
 
----
+PostDive 중 재입수하면 다음과 같이 처리한다.
 
-## 13.4 MISSED DECO alert 표시 시간
+```text
+새 로그를 만들지 않는다.
+연속다이빙으로 처리한다.
+tissue state를 유지한다.
+DECO.STOP 계산을 계속 제공한다.
+activeDecoViolation_ 상태는 유지하거나,
+재입수 후 계산상 clear될 때까지 유지한다.
+```
 
-코드 기준:
+## 13.4 MISSED DECO PostDive 표시 시간
+
+DECO violation이 있는 경우에도 PostDive 표시 시간은 일반 PostDive와 동일하게 3분으로 유지한다.
+
+코드 목표:
 
 ```cpp
-#define DECO_VIOLATION_ALERT_DISPLAY_MS 30000UL
+#define POST_DIVE_DISPLAY_MS 180000UL
 ```
 
 즉:
 
 ```text
-MISSED DECO alert는 30초 표시한다.
+MISSED DECO alert도 PostDive 상태에서 최대 3분 동안 표시한다.
+```
+
+기존의 짧은 alert timeout 값은 Surface 전환 기준으로 사용하지 않는다.
+
+```cpp
+#define DECO_VIOLATION_ALERT_DISPLAY_MS 30000UL
+```
+
+이 값은 향후 다음 용도로만 사용할 수 있다.
+
+```text
+MISSED DECO 문구의 최소 강조 표시 시간
+beep 또는 visual alert 반복 주기
+UI 경고 순환 주기
+```
+
+하지만 상태 전환 기준은 다음으로 통일한다.
+
+```text
+PostDive → Surface = POST_DIVE_DISPLAY_MS
+일반 출수 = 3분
+DECO 위반 출수 = 3분
 ```
 
 표시 예:
@@ -1402,6 +1735,44 @@ event append 저장
 eventCount 실제 반영
 Subsurface XML export 연결
 ```
+## 19.6 Log format v2 후보 필드
+
+RTS가 없는 상태에서 생성된 로그를 나중에 GPS/BLE 시간으로 보정하기 위해 log format v2에서는 다음 필드를 추가하는 것을 검토한다.
+
+```text
+bootCount
+bootElapsedStartSec
+bootElapsedEndSec
+timeCorrectionStatus
+timeCorrectionSource
+```
+
+후보 구조:
+
+```cpp
+uint32_t bootCount;
+uint32_t bootElapsedStartSec;
+uint32_t bootElapsedEndSec;
+uint8_t  timeCorrectionSource; // 0 none, 1 GPS, 2 BLE, 3 simulation
+uint8_t  reservedTime[3];
+```
+
+또는 기존 header를 크게 변경하지 않기 위해 별도 TimeCorrection record를 둘 수 있다.
+
+```text
+DiveLogHeader
+DiveSample[]
+DiveEvent[]
+DiveTimeCorrectionRecord
+```
+
+정책:
+
+```text
+log format v1은 현재 구조 유지
+bootCount 기반 시간 보정이 실제 구현될 때 log format v2 검토
+기존 v1 로그를 읽을 수 있도록 backward compatibility 유지
+```
 
 ---
 
@@ -1409,7 +1780,7 @@ Subsurface XML export 연결
 
 ## 20.1 GPS 시간이 없을 수 있음
 
-GPS 시간이 없으면 실제 날짜/시간 대신 상대 시간을 사용해야 한다.
+GPS 또는 BLE time sync가 없는 경우 실제 날짜/시간 대신 상대 시간을 사용한다.
 
 가능한 상태:
 
@@ -1431,8 +1802,6 @@ enum class LogTimeStatus : uint8_t {
 };
 ```
 
----
-
 ## 20.2 timeSessionId
 
 시간 보정 가능 여부를 판단하기 위해 `timeSessionId`를 사용한다.
@@ -1444,9 +1813,99 @@ enum class LogTimeStatus : uint8_t {
 timeSessionId가 다르면 임의 보정 금지
 ```
 
----
+`timeSessionId`는 다음 조건에서 새로 생성될 수 있다.
 
-## 20.3 48시간 advisory와 시간
+```text
+cold boot
+deep sleep wake 후 시간 연속성을 보장할 수 없는 경우
+RTC continuity가 깨진 경우
+factory reset 또는 log reset
+```
+
+## 20.3 bootCount 기반 보정
+
+`bootCount`는 장치가 새로 부팅될 때마다 증가하는 영구 카운터이다.
+
+용도:
+
+```text
+RTS가 없을 때 기록된 로그가 현재 부팅 세션에서 생성된 것인지 판단
+장기간 전원 OFF 후 잘못된 시간 보정을 방지
+```
+
+RTS가 없는 로그에는 다음 정보를 저장한다.
+
+```text
+bootCount
+bootElapsedStartSec
+bootElapsedEndSec
+timeSessionId
+durationSec
+```
+
+GPS 또는 BLE로 현재 실제 시간이 확보되면 다음을 계산한다.
+
+```text
+bootEpochSec = currentEpochSec - currentBootElapsedSec
+```
+
+그 후 로그 시간이 다음과 같이 보정된다.
+
+```text
+correctedStartEpochSec = bootEpochSec + bootElapsedStartSec
+correctedEndEpochSec   = bootEpochSec + bootElapsedEndSec
+```
+
+보정 성공 조건:
+
+```text
+log.timeStatus == RelativeOnly
+log.bootCount == currentBootCount
+log.timeSessionId == currentTimeSessionId
+currentEpochSec is valid
+currentBootElapsedSec is valid
+```
+
+보정 성공 시:
+
+```text
+log.startEpochSec = correctedStartEpochSec
+log.endEpochSec = correctedEndEpochSec
+log.timeStatus = TimeCorrected
+```
+
+보정 실패 시:
+
+```text
+bootCount mismatch → 자동 보정 금지
+timeSessionId mismatch → 자동 보정 금지
+RTS invalid → 보정 보류
+명확히 보정 불가능한 경우 → SyncFailed
+```
+
+## 20.4 GPS/BLE time source
+
+시간 동기화 source는 다음과 같이 구분한다.
+
+```text
+GPS time
+BLE app time
+Simulation time
+None
+```
+
+우선순위:
+
+```text
+1. GPS time
+2. BLE app time
+3. Simulation time
+4. Relative boot elapsed time
+```
+
+실제 하드웨어에서는 GPS/BLE 시간이 없으면 실제 epoch를 신뢰하지 않는다.
+
+## 20.5 48시간 advisory와 시간
 
 가능하면 epoch 기반으로 advisory를 계산한다.
 
@@ -1454,7 +1913,13 @@ timeSessionId가 다르면 임의 보정 금지
 advisoryEndEpochSec = violationEpochSec + 48h
 ```
 
-epoch가 없을 경우 향후 상대시간 fallback이 필요하다.
+epoch가 없을 경우:
+
+```text
+상대 시간으로 advisory를 임시 계산한다.
+RTS 확보 후 advisoryEndEpochSec를 보정한다.
+bootCount 또는 timeSessionId가 맞지 않으면 자동 보정하지 않는다.
+```
 
 남은 작업:
 
@@ -1462,6 +1927,8 @@ epoch가 없을 경우 향후 상대시간 fallback이 필요하다.
 epoch 없는 상태의 advisory 처리
 재부팅 후 advisory 복원
 GPS/BLE 시간 확보 후 advisoryEndEpochSec 보정
+bootCount 기반 로그 시간 보정 구현
+log format v2 검토
 ```
 
 ---

@@ -76,6 +76,54 @@ Development branch:
 dev/v1.3
 ```
 
+## Current Development Priority
+
+The current v1.3 development priority is focused on:
+
+```text
+1. Continuous dive handling
+2. PostDive holding window
+3. Final log close at PostDive → Surface transition
+4. GPS/BLE automatic power control
+5. GPS/BLE top-bar status indicators
+6. RTS-based dive log time correction
+7. bootCount and boot elapsed based log recovery
+```
+
+Continuous dive policy:
+
+```text
+Depth <0.5m for 60 seconds:
+  Dive → PostDive
+
+PostDive duration:
+  3 minutes
+
+Total short surfacing grace:
+  About 4 minutes
+
+Re-entry during PostDive:
+  Continuous dive, same log
+
+Re-entry after Surface mode:
+  Repetitive dive, new log, tissue loading retained
+```
+
+Time correction policy:
+
+```text
+If real time is available during the dive:
+  log timeStatus = TimeSynced
+
+If real time is not available:
+  log timeStatus = RelativeOnly
+  bootCount and boot elapsed time are stored
+
+When GPS/BLE time is later obtained:
+  logs from the same bootCount and timeSessionId can be corrected
+  corrected logs become TimeCorrected
+```
+
 ## This version is a development snapshot focused on:
 
 - Air / EAN21 single-gas baseline

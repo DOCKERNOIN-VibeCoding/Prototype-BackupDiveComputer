@@ -7,31 +7,24 @@
 ## Unreleased
 
 ### Added
-- Pending items after v1.3.5-dev.
-
-## v1.3.5-dev
-
-Development snapshot tag.
-
-### Added
-- Added DECO.STOP violation advisory flow.
-- Added 48h post-violation advisory state.
-- Added `DECO.VIOL` alternating display on SURFACE mode.
-- Added `MISSED DECO` post-dive alert screen.
-- Added re-entry handling after missed decompression.
-- Added DECO violation event types.
-- Added asymmetric DECO.STOP margins.
+- Documented continuous dive policy using a 4-minute surfacing grace window.
+- Documented PostDive holding window as the tentative surfacing state.
+- Documented final log close at PostDive → Surface transition.
+- Documented GPS/BLE operating rules during Qi charging, post-dive, and wake.
+- Documented RTS-based dive log time correction using bootCount and boot elapsed time.
+- Documented GPS/BLE top-bar status indicator policy.
 
 ### Changed
-- DECO.STOP violation no longer causes hard lockout.
-- SURFACE mode continues to show previous dive information after a violation.
-- DECO.STOP margin changed from symmetric window to shallow/deep asymmetric policy.
-- Safety Stop and DECO.STOP handling clarified.
+- Planned DECO violation PostDive behavior to use the same 3-minute PostDive duration as normal surfacing.
+- Reclassified short re-entry during PostDive as continuous dive instead of repetitive dive.
+- Reclassified re-entry after Surface mode as repetitive dive with tissue loading retained.
 
-### Fixed
-- Prevented invalid `DECO.STOP 0m` display.
-- Improved final surfacing detection after missed stop.
-- Fixed UI function signature issues around surface/advisory display.
+### Planned
+- Add bootCount and boot elapsed fields to log format v2 or a separate time-correction record.
+- Implement GPS/BLE RTS correction for RelativeOnly logs.
+- Implement GPS 30-second x 6 retry policy after surfacing and wake.
+- Implement Qi charging BLE advertising and GPS retry behavior.
+
 
 ## v1.3-dev
 
