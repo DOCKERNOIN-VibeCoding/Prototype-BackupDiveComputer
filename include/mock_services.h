@@ -11,8 +11,13 @@ public:
     void update(SimSensor& sensor);
 
     bool isCharging() const { return charging_; }
+
     bool isBleConnected() const { return bleConnected_; }
+    bool isBleAdvertising() const { return bleAdvertising_; }
+
     bool isGpsValid() const { return gpsValid_; }
+    bool isGpsSearching() const { return gpsSearching_; }
+
     uint8_t getBatteryPct() const { return batteryPct_; }
 
     bool hasNewGF() const { return gfUpdated_; }
@@ -36,8 +41,12 @@ private:
     String line_;
 
     bool charging_ = false;
+
     bool bleConnected_ = false;
+    bool bleAdvertising_ = false;
+
     bool gpsValid_ = false;
+    bool gpsSearching_ = false;
 
     uint8_t batteryPct_ = DEFAULT_BATTERY_PCT;
 

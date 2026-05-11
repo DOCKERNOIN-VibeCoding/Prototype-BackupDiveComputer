@@ -32,6 +32,9 @@ U8G2_ST7567_OS12864_F_4W_HW_SPI u8g2(U8G2_R0, PIN_LCD_CS, PIN_LCD_DC, PIN_LCD_RS
 #define CHARGING_FULL_BLINK_INTERVAL_MS 1000UL
 #endif
 
+#ifndef STATUS_ICON_BLINK_INTERVAL_MS
+#define STATUS_ICON_BLINK_INTERVAL_MS 500UL
+#endif
 
 // ------------------------------------------------------------
 // 공통 유틸 함수
@@ -235,12 +238,42 @@ static void drawTopBar(uint8_t batteryPct) {
 
 // Surface 전용 Top Bar
 // 현재 날짜/시간 + GPS 상태 + 배터리/충전 상태 표시
+
+static void drawStatusIndicator(int x,
+                                int y,
+                                char letter,
+                                bool connected,
+                                bool searching) {
+    char buf[2] = { '-', '\0' };
+
+    if (connected) {
+        buf[0] = letter;
+    } else if (searching) {
+        bool visible =
+            ((millis() / STATUS_ICON_BLINK_INTERVAL_MS) % 2UL) == 0;
+
+        if (visible) {
+            buf[0] = letter;
+        } else {
+            buf[0] = ' ';
+        }
+    } else {
+        buf[0] = '-';
+    }
+
+    u8g2.drawStr(x, y, buf);
+}
+
 static void drawTopBarSurface(uint32_t currentEpochSec,
                               int16_t tzOffsetMin,
                               uint8_t batteryPct,
                               bool gpsValid,
+                              bool gpsSearching,
+                              bool bleConnected,
+                              bool bleAdvertising,
                               bool charging,
                               bool chargeFull) {
+
     char timeText[24];
 
     formatDateTimeFromEpoch(currentEpochSec,
@@ -252,10 +285,18 @@ static void drawTopBarSurface(uint32_t currentEpochSec,
     u8g2.setFont(u8g2_font_5x7_tr);
     u8g2.drawStr(1, 7, timeText);
 
-    // GPS 표시
-    // G : GPS Fix 성공
-    // - : GPS 미수신
-    u8g2.drawStr(88, 7, gpsValid ? "G" : "-");
+    // GPS / BLE 상태 표시
+    // GPS:
+    //   G blinking : searching
+    //   G steady   : fix valid
+    //   -          : fail / inactive
+    //
+    // BLE:
+    //   B blinking : ready / advertising
+    //   B steady   : connected
+    //   -          : off / disconnected
+    drawStatusIndicator(88, 7, 'G', gpsValid, gpsSearching);
+    drawStatusIndicator(96, 7, 'B', bleConnected, bleAdvertising);
 
     const int batX = 106;
     const int batY = 0;
@@ -613,6 +654,9 @@ void uiDrawSurface(uint32_t currentEpochSec,
                    int16_t tzOffsetMin,
                    uint8_t batteryPct,
                    bool gpsValid,
+                   bool gpsSearching,
+                   bool bleConnected,
+                   bool bleAdvertising,
                    bool charging,
                    bool chargeFull,
                    uint32_t lastDiveStartEpochSec,
@@ -630,6 +674,9 @@ void uiDrawSurface(uint32_t currentEpochSec,
                       tzOffsetMin,
                       batteryPct,
                       gpsValid,
+                      gpsSearching,
+                      bleConnected,
+                      bleAdvertising,
                       charging,
                       chargeFull);
                       
@@ -748,16 +795,23 @@ void uiDrawDecoViolationAlert(uint32_t currentEpochSec,
                               int16_t tzOffsetMin,
                               uint8_t batteryPct,
                               bool gpsValid,
+                              bool gpsSearching,
+                              bool bleConnected,
+                              bool bleAdvertising,
                               bool charging,
                               bool chargeFull,
                               uint32_t advisoryRemainSec,
                               bool activeDecoViolation) {
+
     u8g2.clearBuffer();
 
     drawTopBarSurface(currentEpochSec,
                       tzOffsetMin,
                       batteryPct,
                       gpsValid,
+                      gpsSearching,
+                      bleConnected,
+                      bleAdvertising,
                       charging,
                       chargeFull);
 

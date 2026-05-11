@@ -8,6 +8,14 @@ MockServices mockServices;
 void MockServices::begin() {
     line_.reserve(80);
 
+    charging_ = false;
+
+    bleConnected_ = false;
+    bleAdvertising_ = false;
+
+    gpsValid_ = false;
+    gpsSearching_ = false;
+
     batteryPct_ = DEFAULT_BATTERY_PCT;
     gfLow_ = DEFAULT_GF_LOW;
     gfHigh_ = DEFAULT_GF_HIGH;
@@ -50,8 +58,10 @@ void MockServices::printHelp() {
     Serial.println("gf 40 85");
     Serial.println("charge on");
     Serial.println("charge off");
+    Serial.println("ble ready");
     Serial.println("ble on");
     Serial.println("ble off");
+    Serial.println("gps search");
     Serial.println("gps ok");
     Serial.println("gps fail");
     Serial.println("battery 75");
@@ -137,27 +147,45 @@ void MockServices::handleCommand(String cmd, SimSensor& sensor) {
         Serial.println("[MOCK_PWR] charging OFF");
         return;
     }
+    
+    if (cmd == "ble ready") {
+        bleConnected_ = false;
+        bleAdvertising_ = true;
+        Serial.println("[MOCK_BLE] advertising / ready");
+        return;
+    }
 
     if (cmd == "ble on") {
         bleConnected_ = true;
+        bleAdvertising_ = false;
         Serial.println("[MOCK_BLE] connected");
         return;
     }
 
     if (cmd == "ble off") {
         bleConnected_ = false;
+        bleAdvertising_ = false;
         Serial.println("[MOCK_BLE] disconnected");
+        return;
+    }
+
+    if (cmd == "gps search") {
+        gpsValid_ = false;
+        gpsSearching_ = true;
+        Serial.println("[MOCK_GPS] searching");
         return;
     }
 
     if (cmd == "gps ok") {
         gpsValid_ = true;
+        gpsSearching_ = false;
         Serial.println("[MOCK_GPS] valid");
         return;
     }
 
     if (cmd == "gps fail") {
         gpsValid_ = false;
+        gpsSearching_ = false;
         Serial.println("[MOCK_GPS] invalid");
         return;
     }

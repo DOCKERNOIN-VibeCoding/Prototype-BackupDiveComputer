@@ -1078,10 +1078,14 @@ void DiveComputerApp::handlePostDive() {
                                       SCENARIO_TZ_OFFSET_MIN,
                                       mockServices.getBatteryPct(),
                                       mockServices.isGpsValid(),
+                                      mockServices.isGpsSearching(),
+                                      mockServices.isBleConnected(),
+                                      mockServices.isBleAdvertising(),
                                       mockServices.isCharging(),
                                       false,
                                       advisoryRemainSec,
                                       activeDecoViolation_);
+
         } else {
             uiDrawPostDive(diveCount_,
                            lastDiveDurationSec_,
@@ -1281,20 +1285,22 @@ void DiveComputerApp::drawSurfaceInfoScreen() {
     }
 
     uiDrawSurface(getCurrentEpochSec(),
-                SCENARIO_TZ_OFFSET_MIN,
-                batteryPct,
-                mockServices.isGpsValid(),
-                charging,
-                chargeFull,
-                lastDiveStartEpochSec_,
-                lastDiveMaxDepthM_,
-                lastDiveMinTempC_,
-                surfaceIntervalSec,
-                noFlyRemainSec,
-                postViolationAdvisory_,
-                advisoryRemainSec,
-                activeDecoViolation_);
-
+                  SCENARIO_TZ_OFFSET_MIN,
+                  batteryPct,
+                  mockServices.isGpsValid(),
+                  mockServices.isGpsSearching(),
+                  mockServices.isBleConnected(),
+                  mockServices.isBleAdvertising(),
+                  charging,
+                  chargeFull,
+                  lastDiveStartEpochSec_,
+                  lastDiveMaxDepthM_,
+                  lastDiveMinTempC_,
+                  surfaceIntervalSec,
+                  noFlyRemainSec,
+                  postViolationAdvisory_,
+                  advisoryRemainSec,
+                  activeDecoViolation_);
 }
 
 uint32_t DiveComputerApp::getSurfaceIntervalSec() const {
