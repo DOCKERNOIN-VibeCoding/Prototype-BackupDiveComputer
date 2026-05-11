@@ -531,6 +531,9 @@ BackupDiveComputer v1.3의 핵심 방향은 다음과 같다.
 - [ ] TimeCorrected 상태로 로그 header 갱신
 - [ ] SyncFailed 상태 전환 조건 정의
 - [ ] GPS time과 BLE time의 우선순위 구현
+- [ ] bootElapsed는 Deep Sleep continuity를 전제로 하지 않는다고 명시
+- [ ] bootElapsed를 awake boot session 기준 elapsed time으로 정의
+- [ ] Deep Sleep 미사용 정책과 time correction 정책 연결
 
 ---
 
@@ -582,6 +585,10 @@ BackupDiveComputer v1.3의 핵심 방향은 다음과 같다.
 - [ ] Qi 분리 시 GPS/BLE OFF 구현
 - [ ] Sleep → Qi wake → Splash → Surface → GPS 6회 시도 흐름 구현
 - [ ] 출수 후 GPS 30초 x 6회 시도 구현
+- [ ] `BDC_DISABLE_DEEP_SLEEP` config flag 추가
+- [ ] v1.3에서는 Deep Sleep 사용 금지 정책 코드 주석화
+- [ ] 향후 power management 함수가 `BDC_DISABLE_DEEP_SLEEP`을 반드시 따르도록 설계
+- [ ] Light Sleep만 향후 검토 대상으로 유지
 
 ---
 

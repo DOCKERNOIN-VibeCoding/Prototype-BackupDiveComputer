@@ -11,6 +11,22 @@
 #define FW_VERSION  "v1.3.5-dev"
 
 // ============================================================
+// Power management policy
+// ============================================================
+//
+// v1.3 policy:
+// Deep Sleep is disabled.
+// Only Light Sleep may be considered in future power management.
+//
+// Reason:
+// Deep Sleep can break elapsed-time continuity used by bootElapsed,
+// timeSessionId, tissue/advisory continuity, and RTS-based log correction.
+// ============================================================
+
+#define BDC_DISABLE_DEEP_SLEEP 1
+#define BDC_ALLOW_LIGHT_SLEEP  1
+
+// ============================================================
 // Pins
 // ============================================================
 

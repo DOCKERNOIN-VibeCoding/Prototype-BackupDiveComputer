@@ -303,6 +303,31 @@ bootElapsedStartSec = 부팅 후 다이빙 시작까지의 경과 시간
 bootElapsedEndSec = 부팅 후 다이빙 종료까지의 경과 시간
 ```
 
+단, bootElapsed는 Arduino `millis()` raw 값을 직접 저장하지 않는다.
+
+ESP32에서는 `esp_timer_get_time()` 또는 이에 준하는 64-bit monotonic timer를 사용하여
+부팅 후 경과 시간을 계산한다.
+
+로그에는 millisecond 단위가 아니라 second 단위의 값을 저장한다.
+
+```text
+bootElapsedStartSec
+bootElapsedEndSec
+currentBootElapsedSec
+```
+
+이유:
+
+```text
+millis()는 약 49.7일 후 overflow된다.
+millis()는 reset/deep sleep 후 0으로 초기화된다.
+로그 시간 보정에는 절대 millis 값보다 bootCount + monotonic elapsed seconds가 안전하다.
+```
+
+단, UI blink, retry timeout, 짧은 상태 전환 타이머에는 기존처럼 `millis()`를 사용할 수 있다.
+```
+
+
 #### 나중에 GPS 또는 BLE로 RTS가 확보된 경우
 
 Surface 모드 또는 충전 중 GPS/BLE로 RTS가 확보되면, 시스템은 보정 가능한 이전 로그를 검사한다.
@@ -1931,6 +1956,20 @@ bootCount 기반 로그 시간 보정 구현
 log format v2 검토
 ```
 
+## 20.5 bootElapsed continuity policy
+
+bootElapsed는 Deep Sleep을 거쳐 보존되는 시간을 의미하지 않는다.
+bootElapsed는 awake session 기준
+
+정책:
+
+```text
+bootElapsed는 현재 awake boot session 기준 경과 시간이다.
+Deep Sleep continuity는 전제로 하지 않는다.
+v1.3에서는 Deep Sleep을 사용하지 않는다.
+bootCount와 timeSessionId가 일치하는 경우에만 RTS 기반 로그 시간 보정을 허용한다.
+```
+
 ---
 
 # 21. Power management policy
@@ -1951,25 +1990,45 @@ ESP32 Light Sleep
 
 ---
 
-## 21.2 Deep Sleep 주의
+## 21.2 Deep Sleep policy
 
-Deep Sleep은 신중하게 사용한다.
+BackupDiveComputer v1.3에서는 Deep Sleep을 사용하지 않는다.
 
-이유:
-
-```text
-millis() 초기화 가능
-time continuity 문제
-tissue/advisory continuity 문제
-GPS 없는 로그 보정 어려움
-```
-
-기본 정책:
+정책:
 
 ```text
-Light Sleep 우선
-Deep Sleep은 배터리 보호 등 예외 상황에서만 검토
+Deep Sleep 금지
+Light Sleep만 향후 검토
+OLED power save/off 검토
+GPS OFF
+BLE OFF
+Wi-Fi OFF
+ESP32는 awake 또는 light sleep 기반으로 유지
 ```
+
+Deep Sleep을 사용하지 않는 이유:
+
+```text
+Deep Sleep wake 후 millis()/esp_timer 기반 elapsed continuity가 깨질 수 있다.
+timeSessionId, bootElapsed, tissue/advisory continuity 판단이 복잡해진다.
+RTS가 없는 로그의 시간 보정에서 오류 가능성이 커진다.
+```
+
+따라서 향후 power management 코드는 반드시 다음 정책 플래그를 따라야 한다.
+
+```cpp
+#define BDC_DISABLE_DEEP_SLEEP 1
+```
+
+`BDC_DISABLE_DEEP_SLEEP`이 1인 경우 다음 호출은 사용하지 않는다.
+
+```cpp
+esp_deep_sleep_start()
+ESP.deepSleep()
+```
+
+bootElapsed는 Deep Sleep continuity를 전제로 하지 않는다.
+bootElapsed는 하나의 awake boot session 안에서만 유효한 elapsed time으로 정의한다.
 
 ---
 
