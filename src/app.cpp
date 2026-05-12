@@ -48,6 +48,7 @@ void DiveComputerApp::update() {
     updateGFIfNeeded();
     updateBatteryLowPopup();
     updatePostViolationAdvisory();
+    updateGpsBleAutoPower();
 
     if (mockServices.isCharging() && state_ != SystemState::Charging) {
         setState(SystemState::Charging);
@@ -80,6 +81,75 @@ void DiveComputerApp::update() {
     }
 }
 
+void DiveComputerApp::startLimitedGpsSearch() {
+    gpsLimitedSearchActive_ = true;
+    gpsSearchAttempt_ = 1;
+    gpsSearchAttemptStartedMs_ = millis();
+
+    mockServices.setGpsSearching();
+
+    Serial.printf("[GPS] surface search attempt %u/%u\n",
+                  gpsSearchAttempt_,
+                  GPS_SURFACE_MAX_ATTEMPTS);
+}
+
+void DiveComputerApp::stopLimitedGpsSearch() {
+    gpsLimitedSearchActive_ = false;
+    gpsSearchAttempt_ = 0;
+    gpsSearchAttemptStartedMs_ = 0;
+}
+
+void DiveComputerApp::updateGpsBleAutoPower() {
+    uint32_t now = millis();
+
+    if (state_ == SystemState::Dive) {
+        return;
+    }
+
+    if (state_ == SystemState::Charging) {
+        if (!mockServices.isGpsValid()) {
+            mockServices.setGpsSearching();
+        }
+
+        if (!mockServices.isBleConnected() &&
+            !mockServices.isBleAdvertising()) {
+            mockServices.setBleAdvertising();
+        }
+
+        return;
+    }
+
+    if (!gpsLimitedSearchActive_) {
+        return;
+    }
+
+    if (mockServices.isGpsValid()) {
+        Serial.println("[GPS] surface search complete");
+        stopLimitedGpsSearch();
+        return;
+    }
+
+    if (now - gpsSearchAttemptStartedMs_ < GPS_SURFACE_RETRY_INTERVAL_MS) {
+        return;
+    }
+
+    if (gpsSearchAttempt_ >= GPS_SURFACE_MAX_ATTEMPTS) {
+        Serial.println("[GPS] surface search failed -> GPS OFF");
+        mockServices.setGpsOff();
+        stopLimitedGpsSearch();
+        return;
+    }
+
+    gpsSearchAttempt_++;
+    gpsSearchAttemptStartedMs_ = now;
+
+    mockServices.setGpsSearching();
+
+    Serial.printf("[GPS] surface search attempt %u/%u\n",
+                  gpsSearchAttempt_,
+                  GPS_SURFACE_MAX_ATTEMPTS);
+}
+
 void DiveComputerApp::setState(SystemState newState) {
     if (state_ == newState && previousState_ == newState) {
         return;
@@ -91,24 +161,114 @@ void DiveComputerApp::setState(SystemState newState) {
     switch (state_) {
         case SystemState::Surface:
             Serial.println("[STATE] SURFACE");
+
             surfaceIntervalStartMs_ = millis();
+
+            mockServices.setBleOff();
+            startLimitedGpsSearch();
             break;
 
         case SystemState::Dive:
             Serial.println("[STATE] DIVE");
+
+            stopLimitedGpsSearch();
+            mockServices.setGpsOff();
+            mockServices.setBleOff();
             break;
 
         case SystemState::PostDive:
             Serial.println("[STATE] POST_DIVE");
+
             postDiveStartMs_ = millis();
+
+            mockServices.setBleOff();
+            startLimitedGpsSearch();
             break;
 
         case SystemState::Charging:
             Serial.println("[STATE] CHARGING");
+
             chargingEnterMs_ = millis();
             lastUiMs_ = 0;
+
+            stopLimitedGpsSearch();
+            mockServices.setGpsSearching();
+            mockServices.setBleAdvertising();
             break;
     }
+}
+
+void DiveComputerApp::finalizeDiveLog() {
+    if (!pendingDiveClose_) {
+        return;
+    }
+
+    uint32_t now = millis();
+
+    uint32_t durationSec = 0;
+
+    if (dive_.diveStartMs > 0) {
+        durationSec = (now - dive_.diveStartMs) / 1000UL;
+    }
+
+    lastDiveStartEpochSec_ = currentDiveStartEpochSec_;
+    lastDiveDurationSec_ = durationSec;
+    lastDiveEndEpochSec_ = getCurrentEpochSec();
+
+    lastDiveMaxDepthM_ = dive_.maxDepthM;
+    lastDiveMinTempC_ = dive_.minTempC;
+
+    uint32_t noFlyMinutes = calcNoFlyMinutes();
+    noFlyEndEpochSec_ = lastDiveEndEpochSec_ + noFlyMinutes * 60UL;
+
+    DiveLogHeader header = {};
+
+    header.magic = BDC_LOG_MAGIC;
+    header.version = BDC_LOG_VERSION;
+    header.headerSize = sizeof(DiveLogHeader);
+
+    header.diveNumber = diveCount_;
+    header.timeStatus = (uint8_t)LogTimeStatus::TimeSynced;
+    header.timeSessionId = 0;
+
+    header.startEpochSec = lastDiveStartEpochSec_;
+    header.endEpochSec = lastDiveEndEpochSec_;
+    header.durationSec = lastDiveDurationSec_;
+
+    header.noFlyEndEpochSec = noFlyEndEpochSec_;
+
+    header.maxDepthCm = (int16_t)(lastDiveMaxDepthM_ * 100.0f);
+    header.avgDepthCm = 0;
+    header.minTempDeciC = (int16_t)(lastDiveMinTempC_ * 10.0f);
+
+    header.sampleCount = dive_.sampleCount;
+    header.eventCount = 0;
+
+    if (mockServices.isGpsValid()) {
+        header.gpsValid = 1;
+        header.gpsLatE7 = 0;
+        header.gpsLonE7 = 0;
+    } else {
+        header.gpsValid = 0;
+        header.gpsLatE7 = 0;
+        header.gpsLonE7 = 0;
+    }
+
+    logStorage.saveLastDive(header);
+
+    Serial.printf("[DIVE] final close #%u duration=%lus max=%.1fm samples=%u\n",
+                  diveCount_,
+                  durationSec,
+                  dive_.maxDepthM,
+                  dive_.sampleCount);
+
+    Serial.printf("[DIVE] no-fly %luh %02lum\n",
+                  noFlyMinutes / 60UL,
+                  noFlyMinutes % 60UL);
+
+    mockServices.loggerEndDive(diveCount_, durationSec, dive_.maxDepthM);
+
+    pendingDiveClose_ = false;
 }
 
 void DiveComputerApp::updateGFIfNeeded() {
@@ -542,7 +702,6 @@ if (dive_.depthM < DIVE_END_DEPTH_M) {
                 dive_.phase = DivePhase::SafetyStop;
 
                 Serial.println("[DIVE] Enter SAFETY STOP");
-                beep(1000, 150);
                 break;
             }
 
@@ -567,7 +726,6 @@ if (dive_.depthM < DIVE_END_DEPTH_M) {
                 if (dive_.safetyPaused) {
                     dive_.safetyPaused = false;
                     Serial.println("[DIVE] Safety stop RESUMED");
-                    beep(1000, BUZZER_SHORT_BEEP_MS);
                 }
 
                 if (now > dive_.lastSafetyTickMs) {
@@ -582,18 +740,12 @@ if (dive_.depthM < DIVE_END_DEPTH_M) {
                     dive_.phase = DivePhase::Normal;
 
                     Serial.println("[DIVE] Safety stop COMPLETE");
-                    beep(ALARM_FREQ_SAFETY_DONE, 150);
-                    delay(100);
-                    beep(ALARM_FREQ_SAFETY_DONE, 150);
-                    delay(100);
-                    beep(ALARM_FREQ_SAFETY_DONE, 150);
                     break;
                 }
             } else {
                 if (!dive_.safetyPaused) {
                     dive_.safetyPaused = true;
                     Serial.printf("[DIVE] Safety stop PAUSED at %.1fm\n", dive_.depthM);
-                    beep(800, 100);
                 }
 
                 dive_.lastSafetyTickMs = now;
@@ -631,7 +783,6 @@ if (dive_.depthM < DIVE_END_DEPTH_M) {
                         dive_.phase = DivePhase::Normal;
 
                         Serial.println("[DIVE] Safety stop cancelled: dive resumed deeper than 6m for 30s");
-                        beep(900, BUZZER_SHORT_BEEP_MS);
                         break;
                     }
                 } else {
@@ -772,8 +923,6 @@ if (dive_.depthM < DIVE_END_DEPTH_M) {
                 beep(ALARM_FREQ_DECO_ENTER, 150);
                 delay(100);
                 beep(ALARM_FREQ_DECO_ENTER, 150);
-                delay(100);
-                beep(ALARM_FREQ_DECO_ENTER, 150);
 
                 break;
             }
@@ -874,6 +1023,38 @@ if (dive_.depthM < DIVE_END_DEPTH_M) {
         }
     }
 }
+void DiveComputerApp::resumeContinuousDive() {
+    uint32_t now = millis();
+    float depth = simSensor.getDepthM();
+
+    Serial.printf("[POST] continuous dive resumed depth=%.1fm\n", depth);
+
+    pendingDiveClose_ = false;
+    postDiveStartMs_ = 0;
+
+    dive_.surfaceStartMs = 0;
+    dive_.depthM = depth;
+    dive_.prevDepthM = depth;
+    dive_.ascentSampleDepthM = depth;
+
+    dive_.lastDepthMs = now;
+    dive_.lastDecoUpdateMs = now;
+    dive_.lastAscentSampleMs = now;
+    dive_.lastLogMs = now;
+
+    if (activeDecoViolation_) {
+        reentryCount_++;
+        clearedAfterReentry_ = false;
+
+        Serial.printf("[DECO] Continuous re-entry after missed DECO count=%u\n",
+                      reentryCount_);
+
+        logDiveEvent(DiveEventType::EVENT_DECO_REENTRY,
+                     "EVENT_DECO_REENTRY");
+    }
+
+    setState(SystemState::Dive);
+}
 
 void DiveComputerApp::endDive() {
     uint32_t now = millis();
@@ -884,6 +1065,12 @@ void DiveComputerApp::endDive() {
         clearedAfterReentry_ = false;
 
         Serial.println("[DIVE] DECO violation: surfaced with active ceiling");
+
+        beep(ALARM_FREQ_CEILING_VIOL, 150);
+        delay(100);
+        beep(ALARM_FREQ_CEILING_VIOL, 150);
+        delay(100);
+        beep(ALARM_FREQ_CEILING_VIOL, 150);
 
         logDiveEvent(DiveEventType::EVENT_DECO_MISSED,
                      "EVENT_DECO_MISSED");
@@ -927,45 +1114,7 @@ void DiveComputerApp::endDive() {
     uint32_t noFlyMinutes = calcNoFlyMinutes();
     noFlyEndEpochSec_ = lastDiveEndEpochSec_ + noFlyMinutes * 60UL;
 
-    // ------------------------------------------------------------
-    // v7.3:
-    // 다이빙 종료 시 compact log header 저장
-    // ------------------------------------------------------------
-    DiveLogHeader header = {};
-
-    header.magic = BDC_LOG_MAGIC;
-    header.version = BDC_LOG_VERSION;
-    header.headerSize = sizeof(DiveLogHeader);
-
-    header.diveNumber = diveCount_;
-    header.timeStatus = (uint8_t)LogTimeStatus::TimeSynced;
-    header.timeSessionId = 0;
-
-    header.startEpochSec = lastDiveStartEpochSec_;
-    header.endEpochSec = lastDiveEndEpochSec_;
-    header.durationSec = lastDiveDurationSec_;
-
-    header.noFlyEndEpochSec = noFlyEndEpochSec_;
-
-    header.maxDepthCm = (int16_t)(lastDiveMaxDepthM_ * 100.0f);
-    header.avgDepthCm = 0;
-    header.minTempDeciC = (int16_t)(lastDiveMinTempC_ * 10.0f);
-
-    header.sampleCount = dive_.sampleCount;
-    header.eventCount = 0;
-
-    if (mockServices.isGpsValid()) {
-        header.gpsValid = 1;
-        header.gpsLatE7 = 0;
-        header.gpsLonE7 = 0;
-    } else {
-        header.gpsValid = 0;
-        header.gpsLatE7 = 0;
-        header.gpsLonE7 = 0;
-    }
-
-    logStorage.saveLastDive(header);
-
+    pendingDiveClose_ = true;
 
     Serial.printf("[DIVE] end #%u duration=%lus max=%.1fm samples=%u\n",
                   diveCount_,
@@ -984,10 +1133,6 @@ void DiveComputerApp::endDive() {
                   deco_.getTissuePressure(15));
 
     mockServices.loggerEndDive(diveCount_, durationSec, dive_.maxDepthM);
-
-    beep(1000, 120);
-    delay(100);
-    beep(1000, 120);
 
     postDiveStartMs_ = millis();
     lastOffgasMs_ = millis();
@@ -1041,24 +1186,11 @@ void DiveComputerApp::handlePostDive() {
 
             Serial.printf("[POST] Re-dive detected depth=%.1fm\n", depth);
 
-            startDive();
+            resumeContinuousDive();
             return;
         }
     } else {
         diveDetectCount_ = 0;
-    }
-
-    if (postViolationAdvisory_ &&
-        now - postDiveStartMs_ >= DECO_VIOLATION_ALERT_DISPLAY_MS) {
-
-        Serial.println("[POST] deco violation alert done -> SURFACE");
-
-        postDiveStartMs_ = 0;
-        surfaceIntervalStartMs_ = millis();
-        surfaceIntervalOffsetSec_ = 0;
-
-        setState(SystemState::Surface);
-        return;
     }
 
     if (now - lastUiMs_ >= UI_UPDATE_INTERVAL_MS) {
@@ -1099,7 +1231,9 @@ void DiveComputerApp::handlePostDive() {
     }
 
     if (now - postDiveStartMs_ >= POST_DIVE_DISPLAY_MS) {
-        Serial.println("[POST] timeout -> SURFACE");
+        Serial.println("[POST] timeout -> final close -> SURFACE");
+
+        finalizeDiveLog();
 
         postDiveStartMs_ = 0;
         surfaceIntervalStartMs_ = millis();

@@ -117,6 +117,11 @@ private:
     uint32_t postViolationAdvisoryEndEpochSec_ = 0;
     uint8_t reentryCount_ = 0;
     bool clearedAfterReentry_ = false;
+    bool pendingDiveClose_ = false;
+
+    bool gpsLimitedSearchActive_ = false;
+    uint8_t gpsSearchAttempt_ = 0;
+    uint32_t gpsSearchAttemptStartedMs_ = 0;
 
 private:
     void setState(SystemState newState);
@@ -128,6 +133,12 @@ private:
 
     void startDive();
     void endDive();
+    void resumeContinuousDive();
+    void finalizeDiveLog();
+
+    void startLimitedGpsSearch();
+    void stopLimitedGpsSearch();
+    void updateGpsBleAutoPower();
 
     void updateOffgassing();
     void updateGFIfNeeded();

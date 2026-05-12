@@ -52,6 +52,23 @@
 #define PIN_QI_DETECT    2
 
 // ============================================================
+// GPS / BLE automatic power policy
+// ============================================================
+//
+// Surface / PostDive GPS policy:
+//   30 seconds per attempt
+//   6 attempts max
+//   total about 180 seconds
+//
+// Charging policy:
+//   GPS keeps searching until fix or charger removed
+//   BLE stays advertising / ready while charging
+// ============================================================
+
+#define GPS_SURFACE_RETRY_INTERVAL_MS 30000UL
+#define GPS_SURFACE_MAX_ATTEMPTS      6
+
+// ============================================================
 // Display
 // ============================================================
 
