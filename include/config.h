@@ -8,7 +8,7 @@
 // ============================================================
 
 #define FW_NAME     "BackupDiveComputer"
-#define FW_VERSION  "v1.3.5-dev"
+#define FW_VERSION  "v1.3.6-dev"
 
 // ============================================================
 // Power management policy
