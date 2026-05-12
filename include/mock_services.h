@@ -12,6 +12,12 @@ public:
 
     bool isCharging() const { return charging_; }
 
+    void setGpsSearching();
+    void setGpsOff();
+
+    void setBleAdvertising();
+    void setBleOff();
+
     bool isBleConnected() const { return bleConnected_; }
     bool isBleAdvertising() const { return bleAdvertising_; }
 

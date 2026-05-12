@@ -47,6 +47,46 @@ void MockServices::update(SimSensor& sensor) {
     }
 }
 
+void MockServices::setGpsSearching() {
+    if (gpsValid_ || gpsSearching_) {
+        return;
+    }
+
+    gpsValid_ = false;
+    gpsSearching_ = true;
+    Serial.println("[MOCK_GPS] auto search");
+}
+
+void MockServices::setGpsOff() {
+    if (!gpsValid_ && !gpsSearching_) {
+        return;
+    }
+
+    gpsValid_ = false;
+    gpsSearching_ = false;
+    Serial.println("[MOCK_GPS] auto off");
+}
+
+void MockServices::setBleAdvertising() {
+    if (bleConnected_ || bleAdvertising_) {
+        return;
+    }
+
+    bleConnected_ = false;
+    bleAdvertising_ = true;
+    Serial.println("[MOCK_BLE] auto advertising");
+}
+
+void MockServices::setBleOff() {
+    if (!bleConnected_ && !bleAdvertising_) {
+        return;
+    }
+
+    bleConnected_ = false;
+    bleAdvertising_ = false;
+    Serial.println("[MOCK_BLE] auto off");
+}
+
 void MockServices::printHelp() {
     Serial.println();
     Serial.println("========== SIM COMMANDS ==========");
