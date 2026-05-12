@@ -1116,7 +1116,7 @@ void DiveComputerApp::endDive() {
 
     pendingDiveClose_ = true;
 
-    Serial.printf("[DIVE] end #%u duration=%lus max=%.1fm samples=%u\n",
+    Serial.printf("[DIVE] tentative end #%u duration=%lus max=%.1fm samples=%u\n",
                   diveCount_,
                   durationSec,
                   dive_.maxDepthM,
@@ -1131,9 +1131,7 @@ void DiveComputerApp::endDive() {
                   deco_.getTissuePressure(4),
                   deco_.getTissuePressure(8),
                   deco_.getTissuePressure(15));
-
-    mockServices.loggerEndDive(diveCount_, durationSec, dive_.maxDepthM);
-
+    
     postDiveStartMs_ = millis();
     lastOffgasMs_ = millis();
 
