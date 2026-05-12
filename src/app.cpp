@@ -473,6 +473,9 @@ bool DiveComputerApp::shouldShowChargingSplash(uint32_t now) const {
 }
 
 void DiveComputerApp::startDive() {
+    bool repetitiveDive = lastDiveEndEpochSec_ > 0;
+    uint32_t surfaceIntervalSec = getSurfaceIntervalSec();
+
     dive_ = DiveRuntime();
 
     // Once a new dive starts, previous-surface preload offset is no longer used.
@@ -512,8 +515,17 @@ void DiveComputerApp::startDive() {
         logDiveEvent(DiveEventType::EVENT_DECO_REENTRY, "EVENT_DECO_REENTRY");
     }
 
+    if (repetitiveDive) {
+        Serial.printf("[DIVE] repetitive start #%u depth=%.1fm surfaceInterval=%lus tissue retained\n",
+                      diveCount_,
+                      dive_.depthM,
+                      surfaceIntervalSec);
+    } else {
+        Serial.printf("[DIVE] start #%u depth=%.1fm\n",
+                      diveCount_,
+                      dive_.depthM);
+    }
 
-    Serial.printf("[DIVE] start #%u depth=%.1fm\n", diveCount_, dive_.depthM);
     Serial.printf("[DIVE] tissue pN2 c0=%.3f c4=%.3f c8=%.3f c15=%.3f\n",
                   deco_.getTissuePressure(0),
                   deco_.getTissuePressure(4),

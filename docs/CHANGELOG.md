@@ -13,17 +13,25 @@
 - Documented GPS/BLE operating rules during Qi charging, post-dive, and wake.
 - Documented RTS-based dive log time correction using bootCount and boot elapsed time.
 - Documented GPS/BLE top-bar status indicator policy.
+- Implemented automatic GPS/BLE mock power control for Surface, PostDive, Dive, and Charging states.
+- Implemented Surface/PostDive GPS retry policy using 30-second attempts up to 6 attempts.
+- Implemented PostDive final log close at PostDive → Surface transition.
+- Implemented continuous dive handling for re-entry during PostDive.
+- Added Serial log distinction for repetitive dives after Surface mode.
+- Added MISSED DECO 3-beep negative alert.
 
 ### Changed
 - Planned DECO violation PostDive behavior to use the same 3-minute PostDive duration as normal surfacing.
 - Reclassified short re-entry during PostDive as continuous dive instead of repetitive dive.
 - Reclassified re-entry after Surface mode as repetitive dive with tissue loading retained.
+- Changed PostDive log handling so Dive → PostDive is only a tentative end.
+- Changed final compact log save to occur at PostDive → Surface transition.
+- Changed MISSED DECO PostDive behavior to use the same 3-minute PostDive duration as normal surfacing.
+- Reduced non-critical buzzer alerts according to the 1/2/3 beep policy.
 
 ### Planned
 - Add bootCount and boot elapsed fields to log format v2 or a separate time-correction record.
 - Implement GPS/BLE RTS correction for RelativeOnly logs.
-- Implement GPS 30-second x 6 retry policy after surfacing and wake.
-- Implement Qi charging BLE advertising and GPS retry behavior.
 
 
 ## v1.3-dev

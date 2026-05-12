@@ -3,13 +3,13 @@
 현재 개발 브랜치:
 
 ```text
-dev/v1.3
+dev/v1.3.6
 ```
 
 현재 개발 스냅샷:
 
 ```text
-v1.3.5-dev
+dev/v1.3.6
 ```
 
 이 문서는 `v1.3.5-dev` 기준으로 완료된 항목과 이후 개발해야 할 항목을 정리한다.
@@ -317,8 +317,8 @@ BackupDiveComputer v1.3의 핵심 방향은 다음과 같다.
 - [x] 미완료 출수 시 `activeDecoViolation_ = true`
 - [x] 미완료 출수 시 48시간 advisory 시작
 - [x] PostDive 단계에서 `MISSED DECO` alert 화면 표시
-- [ ] DECO violation PostDive도 일반 PostDive와 동일하게 3분 유지하도록 변경
-- [ ] `DECO_VIOLATION_ALERT_DISPLAY_MS`를 Surface 전환 기준에서 제거하거나 UI 강조 시간으로만 재정의
+- [x] DECO violation PostDive도 일반 PostDive와 동일하게 3분 유지하도록 변경
+- [x] `DECO_VIOLATION_ALERT_DISPLAY_MS`를 Surface 전환 기준에서 제거하거나 UI 강조 시간으로만 재정의
 - [ ] MISSED DECO PostDive 3분 표시 Wokwi 검증
 - [x] Surface 화면에 `DECO.VIOL` 남은 시간 표시
 - [x] Surface 정보는 감압 위반 후에도 계속 표시
@@ -489,10 +489,10 @@ BackupDiveComputer v1.3의 핵심 방향은 다음과 같다.
 - [ ] re-entry event 저장
 - [ ] cleared-after-reentry event 저장
 - [ ] LittleFS 저장 실패 시 fallback 정책 정리
-- [ ] PostDive 진입 시 로그를 확정 저장하지 않고 pending 상태로 유지
-- [ ] PostDive → Surface 전환 시 실제 로그 종료 확정
-- [ ] PostDive 중 재입수 시 기존 로그에 이어 기록
-- [ ] Surface 진입 후 재잠수 시 반복다이빙 로그로 새로 시작
+- [x] PostDive 진입 시 로그를 확정 저장하지 않고 pending 상태로 유지
+- [x] PostDive → Surface 전환 시 실제 로그 종료 확정
+- [x] PostDive 중 재입수 시 기존 로그에 이어 기록
+- [x] Surface 진입 후 재잠수 시 반복다이빙 로그로 새로 시작
 - [ ] GPS/BLE RTS 획득 후 pending 또는 RelativeOnly 로그 시간 보정
 - [ ] 보정된 로그를 LittleFS에 다시 저장
 
@@ -580,11 +580,11 @@ BackupDiveComputer v1.3의 핵심 방향은 다음과 같다.
 - [ ] 충전 중 BLE 동작 정의
 - [ ] Deep Sleep 사용 시 tissue/advisory/time continuity 영향 검토
 - [ ] 실제 하드웨어 전류 측정
-- [ ] Qi 충전 중 GPS retry-until-fix 정책 구현
-- [ ] Qi 충전 중 BLE advertising 유지 구현
-- [ ] Qi 분리 시 GPS/BLE OFF 구현
+- [x] Qi 충전 중 GPS retry-until-fix 정책 구현
+- [x] Qi 충전 중 BLE advertising 유지 구현
+- [x] Qi 분리 시 GPS/BLE OFF 구현
 - [ ] Sleep → Qi wake → Splash → Surface → GPS 6회 시도 흐름 구현
-- [ ] 출수 후 GPS 30초 x 6회 시도 구현
+- [x] 출수 후 GPS 30초 x 6회 시도 구현
 - [ ] `BDC_DISABLE_DEEP_SLEEP` config flag 추가
 - [ ] v1.3에서는 Deep Sleep 사용 금지 정책 코드 주석화
 - [ ] 향후 power management 함수가 `BDC_DISABLE_DEEP_SLEEP`을 반드시 따르도록 설계
@@ -737,14 +737,14 @@ BackupDiveComputer v1.3의 핵심 방향은 다음과 같다.
 
 ## 22.9 Continuous / repetitive dive 테스트
 
-- [ ] 수심 <0.5m 30초 후 재잠수 시 같은 Dive 유지 확인
-- [ ] 수심 <0.5m 60초 후 PostDive 진입 확인
-- [ ] PostDive 3분 이내 재잠수 시 연속다이빙 처리 확인
-- [ ] PostDive 중 재잠수 시 새 로그를 만들지 않는지 확인
+- [x] 수심 <0.5m 30초 후 재잠수 시 같은 Dive 유지 확인
+- [x] 수심 <0.5m 60초 후 PostDive 진입 확인
+- [x] PostDive 3분 이내 재잠수 시 연속다이빙 처리 확인
+- [x] PostDive 중 재잠수 시 새 로그를 만들지 않는지 확인
 - [ ] PostDive 중 재잠수 시 기존 로그에 샘플이 이어지는지 확인
-- [ ] PostDive 3분 경과 후 Surface 전환 확인
-- [ ] Surface 진입 이후 재잠수 시 반복다이빙으로 새 로그 생성 확인
-- [ ] 반복다이빙에서도 tissue loading이 이어지는지 확인
+- [x] PostDive 3분 경과 후 Surface 전환 확인
+- [x] Surface 진입 이후 재잠수 시 반복다이빙으로 새 로그 생성 확인
+- [x] 반복다이빙에서도 tissue loading이 이어지는지 확인
 
 ## 22.10 GPS/BLE RTS 및 로그 시간 보정 테스트
 

@@ -5,7 +5,7 @@
 현재 문서 기준 스냅샷:
 
 ```text
-v1.3.5-dev
+v1.3.6-dev
 ```
 
 현재 개발 브랜치:
@@ -57,10 +57,10 @@ BackupDiveComputer
 ## 1.2 현재 개발 버전
 
 ```text
-v1.3.5-dev
+v1.3.6-dev
 ```
 
-`v1.3.5-dev`는 정식 안정판이 아니라 `v1.3` 개발 중간 스냅샷이다.
+`v1.3.6-dev`는 정식 안정판이 아니라 `v1.3` 개발 중간 스냅샷이다.
 
 ## 1.3 현재 개발 브랜치
 
@@ -454,9 +454,9 @@ platformio.ini
 
 ---
 
-# 4. 현재 v1.3.5-dev 구현 상태 요약
+# 4. 현재 v1.3.6-dev 구현 상태 요약
 
-`v1.3.5-dev` 기준으로 다음 항목이 코드에 반영되어 있다.
+`v1.3.6-dev` 기준으로 다음 항목이 코드에 반영되어 있다.
 
 ## 4.1 Firmware version
 
@@ -464,7 +464,7 @@ platformio.ini
 
 ```cpp
 #define FW_NAME     "BackupDiveComputer"
-#define FW_VERSION  "v1.3.5-dev"
+#define FW_VERSION  "v1.3.6-dev"
 ```
 
 ---
@@ -567,6 +567,33 @@ Wokwi simulation: RAM fallback 가능
 DiveLogHeader 저장/로드 구현됨
 샘플 전체 저장은 아직 미완성
 이벤트 영구 저장은 아직 미완성
+```
+
+## 4.5 v1.3.6-dev 추가 구현
+
+`v1.3.6-dev`에서는 다음 항목이 코드에 반영되었다.
+
+```text
+1. Surface / PostDive 진입 시 GPS 자동 search 시작
+2. Surface / PostDive GPS retry 정책 적용
+   - 30초 x 6회
+   - 실패 시 GPS OFF
+3. Charging 진입 시 GPS search + BLE advertising 자동 시작
+4. Dive 진입 시 GPS/BLE 자동 OFF
+5. PostDive 중 재입수는 continuous dive로 처리
+   - diveCount 증가 없음
+   - 새 log start 없음
+6. PostDive → Surface 전환 시 최종 로그 close/save
+7. Surface 이후 재입수는 repetitive dive로 Serial log 구분
+   - tissue loading 유지
+   - 새 로그 시작
+8. Buzzer 정책 정리
+   - 이벤트 알림: 1회
+   - 긍정 신호: 2회
+   - 부정 신호: 3회
+   - POST DIVE 진입음 제거
+   - Safety Stop 일반 상태음 제거
+   - MISSED DECO 3회 경고음 추가
 ```
 
 ---
@@ -862,9 +889,9 @@ EVENT_CEIL_GT_18M
 
 # 9. DECO.STOP margin 정책
 
-## 9.1 v1.3.5-dev margin
+## 9.1 v1.3.6-dev margin
 
-v1.3.5-dev부터 DECO.STOP 허용 범위는 대칭 ±0.6m가 아니다.
+v1.3.6-dev부터 DECO.STOP 허용 범위는 대칭 ±0.6m가 아니다.
 
 코드 기준:
 
@@ -1028,7 +1055,7 @@ DECO.STOP 시간은 고정값이 아니다.
 
 ## 10.4 현재 구현상 주의
 
-v1.3.5-dev에서는 stop depth와 remain time이 실시간 계산 결과를 기반으로 갱신된다.
+v1.3.6-dev에서는 stop depth와 remain time이 실시간 계산 결과를 기반으로 갱신된다.
 
 다만 다음 항목은 아직 추가 고도화가 필요하다.
 
@@ -1057,7 +1084,7 @@ DECO.STOP 0m
 
 ---
 
-## 11.2 v1.3.5-dev 처리
+## 11.2 v1.3.6-dev 처리
 
 현재 코드는 NDL이 0이더라도 바로 Deco phase로 들어가지 않고, `calculateDeco()` 결과를 확인한다.
 
@@ -1398,7 +1425,7 @@ DECO.VIOL 47:58
 
 ## 14.1 상태 변수
 
-v1.3.5-dev에서 구현된 상태 변수:
+v1.3.6-dev에서 구현된 상태 변수:
 
 ```cpp
 bool activeDecoViolation_;
@@ -2191,7 +2218,7 @@ dev/v1.3
 현재 개발 snapshot tag:
 
 ```text
-v1.3.5-dev
+v1.3.6-dev
 ```
 
 문서 수정 후 commit 예:
@@ -2200,15 +2227,15 @@ v1.3.5-dev
 git checkout dev/v1.3
 git status
 git add docs/DEVELOPMENT_v1.3.md
-git commit -m "Update DEVELOPMENT docs for v1.3.5-dev"
+git commit -m "Update DEVELOPMENT docs for v1.3.6-dev"
 git push origin dev/v1.3
 ```
 
 태그를 최신 문서 포함 위치로 이동하려면, 개인 개발 단계에서만 다음을 사용할 수 있다.
 
 ```bash
-git tag -f v1.3.5-dev
-git push origin -f v1.3.5-dev
+git tag -f v1.3.6-dev
+git push origin -f v1.3.6-dev
 ```
 
 주의:
@@ -2219,12 +2246,12 @@ git push origin -f v1.3.5-dev
 
 ---
 
-# 28. v1.3.5-dev 완료된 주요 항목
+# 28. v1.3.6-dev 완료된 주요 항목
 
 현재 완료 또는 부분 구현 완료:
 
 ```text
-FW_VERSION v1.3.5-dev
+FW_VERSION v1.3.6-dev
 Air / EAN21 기본 gas
 FO2 21~40% compile-time range
 ppO2 max 1.4 bar
@@ -2253,7 +2280,7 @@ Safety Stop skipped flow
 
 ---
 
-# 29. v1.3.5-dev 이후 남은 주요 작업
+# 29. v1.3.6-dev 이후 남은 주요 작업
 
 남은 작업:
 
