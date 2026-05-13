@@ -152,6 +152,8 @@ private:
     void stopLimitedGpsSearch();
     void updateGpsBleAutoPower();
     void updateRtsFromGps();
+    bool correctLogTimeIfPossible(DiveLogHeader& header);
+    void correctStoredRelativeLogIfPossible();
     uint32_t getCurrentBootElapsedSec() const;
 
     void updateOffgassing();

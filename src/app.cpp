@@ -203,9 +203,85 @@ void DiveComputerApp::updateRtsFromGps() {
         Serial.printf("[RTS] GPS time acquired epoch=%lu bootElapsed=%lus\n",
                       (unsigned long)rtsEpochSec_,
                       (unsigned long)rtsAcquiredBootElapsedSec_);
+
+        correctStoredRelativeLogIfPossible();
     }
 
     lastGpsValid_ = gpsValid;
+}
+
+bool DiveComputerApp::correctLogTimeIfPossible(DiveLogHeader& header) {
+    if (header.timeStatus != (uint8_t)LogTimeStatus::RelativeOnly) {
+        return false;
+    }
+
+    if (!rtsValid_) {
+        Serial.println("[RTS] correction skipped: no RTS");
+        return false;
+    }
+
+    if (header.bootCount != bootCount_) {
+        Serial.printf("[RTS] correction skipped: bootCount mismatch log=%lu current=%lu\n",
+                      (unsigned long)header.bootCount,
+                      (unsigned long)bootCount_);
+        return false;
+    }
+
+    if (header.timeSessionId != timeSessionId_) {
+        Serial.printf("[RTS] correction skipped: timeSessionId mismatch log=%lu current=%lu\n",
+                      (unsigned long)header.timeSessionId,
+                      (unsigned long)timeSessionId_);
+        return false;
+    }
+
+    if (header.bootElapsedEndSec < header.bootElapsedStartSec) {
+        Serial.println("[RTS] correction skipped: invalid boot elapsed range");
+        return false;
+    }
+
+    if (rtsEpochSec_ <= rtsAcquiredBootElapsedSec_) {
+        Serial.println("[RTS] correction skipped: invalid RTS epoch");
+        return false;
+    }
+
+    uint32_t bootEpochSec = rtsEpochSec_ - rtsAcquiredBootElapsedSec_;
+
+    header.startEpochSec = bootEpochSec + header.bootElapsedStartSec;
+    header.endEpochSec = bootEpochSec + header.bootElapsedEndSec;
+    header.timeStatus = (uint8_t)LogTimeStatus::TimeCorrected;
+
+    Serial.printf("[RTS] log time corrected start=%lu end=%lu bootEpoch=%lu\n",
+                  (unsigned long)header.startEpochSec,
+                  (unsigned long)header.endEpochSec,
+                  (unsigned long)bootEpochSec);
+
+    return true;
+}
+
+void DiveComputerApp::correctStoredRelativeLogIfPossible() {
+    DiveLogHeader header;
+
+    if (!logStorage.loadLastDive(header)) {
+        return;
+    }
+
+    if (!correctLogTimeIfPossible(header)) {
+        return;
+    }
+
+    if (header.endEpochSec > 0) {
+        uint32_t noFlyMinutes = calcNoFlyMinutes();
+        header.noFlyEndEpochSec = header.endEpochSec + noFlyMinutes * 60UL;
+    }
+
+    if (logStorage.saveLastDive(header)) {
+        lastDiveStartEpochSec_ = header.startEpochSec;
+        lastDiveEndEpochSec_ = header.endEpochSec;
+        lastDiveDurationSec_ = header.durationSec;
+        noFlyEndEpochSec_ = header.noFlyEndEpochSec;
+
+        Serial.println("[RTS] stored RelativeOnly log updated to TimeCorrected");
+    }
 }
 
 void DiveComputerApp::setState(SystemState newState) {
@@ -325,6 +401,20 @@ void DiveComputerApp::finalizeDiveLog() {
         header.gpsValid = 0;
         header.gpsLatE7 = 0;
         header.gpsLonE7 = 0;
+    }
+
+    if (correctLogTimeIfPossible(header)) {
+        currentDiveTimeStatus_ = LogTimeStatus::TimeCorrected;
+
+        lastDiveStartEpochSec_ = header.startEpochSec;
+        lastDiveEndEpochSec_ = header.endEpochSec;
+
+        uint32_t noFlyMinutes = calcNoFlyMinutes();
+        noFlyEndEpochSec_ = lastDiveEndEpochSec_ + noFlyMinutes * 60UL;
+
+        header.noFlyEndEpochSec = noFlyEndEpochSec_;
+
+        Serial.println("[RTS] pending RelativeOnly log updated to TimeCorrected");
     }
 
     logStorage.saveLastDive(header);
