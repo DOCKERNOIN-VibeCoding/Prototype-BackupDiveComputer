@@ -120,6 +120,11 @@ private:
     bool clearedAfterReentry_ = false;
     bool pendingDiveClose_ = false;
 
+    bool rtsValid_ = false;
+    bool lastGpsValid_ = false;
+    uint32_t rtsEpochSec_ = 0;
+    uint32_t rtsAcquiredBootElapsedSec_ = 0;
+
     bool gpsLimitedSearchActive_ = false;
     uint8_t gpsSearchAttempt_ = 0;
     uint32_t gpsSearchAttemptStartedMs_ = 0;
@@ -140,6 +145,8 @@ private:
     void startLimitedGpsSearch();
     void stopLimitedGpsSearch();
     void updateGpsBleAutoPower();
+    void updateRtsFromGps();
+    uint32_t getCurrentBootElapsedSec() const;
 
     void updateOffgassing();
     void updateGFIfNeeded();

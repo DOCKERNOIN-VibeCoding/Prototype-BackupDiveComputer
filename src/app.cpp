@@ -8,6 +8,10 @@
 
 #include <math.h>
 
+#if defined(ESP32)
+#include <esp_timer.h>
+#endif
+
 DiveComputerApp app;
 
 void DiveComputerApp::begin() {
@@ -49,6 +53,7 @@ void DiveComputerApp::update() {
     updateBatteryLowPopup();
     updatePostViolationAdvisory();
     updateGpsBleAutoPower();
+    updateRtsFromGps();
 
     if (mockServices.isCharging() && state_ != SystemState::Charging) {
         setState(SystemState::Charging);
@@ -166,6 +171,22 @@ void DiveComputerApp::updateGpsBleAutoPower() {
     Serial.printf("[GPS] surface search attempt %u/%u\n",
                   gpsSearchAttempt_,
                   GPS_SURFACE_MAX_ATTEMPTS);
+}
+
+void DiveComputerApp::updateRtsFromGps() {
+    bool gpsValid = mockServices.isGpsValid();
+
+    if (gpsValid && !lastGpsValid_) {
+        rtsValid_ = true;
+        rtsEpochSec_ = getCurrentEpochSec();
+        rtsAcquiredBootElapsedSec_ = getCurrentBootElapsedSec();
+
+        Serial.printf("[RTS] GPS time acquired epoch=%lu bootElapsed=%lus\n",
+                      (unsigned long)rtsEpochSec_,
+                      (unsigned long)rtsAcquiredBootElapsedSec_);
+    }
+
+    lastGpsValid_ = gpsValid;
 }
 
 void DiveComputerApp::setState(SystemState newState) {
@@ -412,6 +433,13 @@ void DiveComputerApp::applyScenarioPreload() {
     }
 }
 
+uint32_t DiveComputerApp::getCurrentBootElapsedSec() const {
+#if defined(ESP32)
+    return (uint32_t)(esp_timer_get_time() / 1000000ULL);
+#else
+    return millis() / 1000UL;
+#endif
+}
 
 uint32_t DiveComputerApp::getSimEpochSec() const {
     return millis() / 1000UL;
