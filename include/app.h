@@ -86,6 +86,9 @@ private:
 
     uint16_t diveCount_ = 0;
 
+    uint32_t bootCount_ = 0;
+    uint32_t timeSessionId_ = 0;
+
     uint32_t noFlyEndSimSec_ = 0;
     uint32_t postDiveStartMs_ = 0;
     uint32_t lastOffgasMs_ = 0;
@@ -102,6 +105,9 @@ private:
     uint8_t diveDetectCount_ = 0;
 
     uint32_t currentDiveStartEpochSec_ = 0;
+    uint32_t currentDiveBootElapsedStartSec_ = 0;
+    uint32_t currentDiveBootElapsedEndSec_ = 0;
+    LogTimeStatus currentDiveTimeStatus_ = LogTimeStatus::RelativeOnly;
 
     // Battery low popup state
     uint32_t lastBatteryLowPopupMs_ = 0;

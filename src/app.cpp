@@ -10,6 +10,7 @@
 
 #if defined(ESP32)
 #include <esp_timer.h>
+#include <Preferences.h>
 #endif
 
 DiveComputerApp app;
@@ -28,6 +29,24 @@ void DiveComputerApp::begin() {
     simSensor.begin();
     mockServices.begin();
     logStorage.begin();
+
+    #if defined(ESP32)
+        Preferences prefs;
+        prefs.begin("bdc", false);
+
+        bootCount_ = prefs.getUInt("bootCount", 0) + 1;
+        prefs.putUInt("bootCount", bootCount_);
+
+        prefs.end();
+    #else
+        bootCount_ = 1;
+    #endif
+
+    timeSessionId_ = bootCount_;
+
+    Serial.printf("[BOOT] bootCount=%lu timeSessionId=%lu\n",
+                  (unsigned long)bootCount_,
+                  (unsigned long)timeSessionId_);
 
     deco_.init(SURFACE_PRESSURE_BAR);
     deco_.setGF(DEFAULT_GF_LOW, DEFAULT_GF_HIGH);
@@ -251,16 +270,25 @@ void DiveComputerApp::finalizeDiveLog() {
     if (dive_.diveStartMs > 0) {
         durationSec = (now - dive_.diveStartMs) / 1000UL;
     }
+    currentDiveBootElapsedEndSec_ = getCurrentBootElapsedSec();
 
-    lastDiveStartEpochSec_ = currentDiveStartEpochSec_;
     lastDiveDurationSec_ = durationSec;
-    lastDiveEndEpochSec_ = getCurrentEpochSec();
+
+    if (currentDiveTimeStatus_ == LogTimeStatus::TimeSynced) {
+        lastDiveStartEpochSec_ = currentDiveStartEpochSec_;
+        lastDiveEndEpochSec_ = getCurrentEpochSec();
+
+        uint32_t noFlyMinutes = calcNoFlyMinutes();
+        noFlyEndEpochSec_ = lastDiveEndEpochSec_ + noFlyMinutes * 60UL;
+    } else {
+        lastDiveStartEpochSec_ = 0;
+        lastDiveEndEpochSec_ = 0;
+        noFlyEndEpochSec_ = 0;
+    }
 
     lastDiveMaxDepthM_ = dive_.maxDepthM;
     lastDiveMinTempC_ = dive_.minTempC;
 
-    uint32_t noFlyMinutes = calcNoFlyMinutes();
-    noFlyEndEpochSec_ = lastDiveEndEpochSec_ + noFlyMinutes * 60UL;
 
     DiveLogHeader header = {};
 
@@ -269,8 +297,12 @@ void DiveComputerApp::finalizeDiveLog() {
     header.headerSize = sizeof(DiveLogHeader);
 
     header.diveNumber = diveCount_;
-    header.timeStatus = (uint8_t)LogTimeStatus::TimeSynced;
-    header.timeSessionId = 0;
+    header.timeStatus = (uint8_t)currentDiveTimeStatus_;
+    header.timeSessionId = timeSessionId_;
+
+    header.bootCount = bootCount_;
+    header.bootElapsedStartSec = currentDiveBootElapsedStartSec_;
+    header.bootElapsedEndSec = currentDiveBootElapsedEndSec_;
 
     header.startEpochSec = lastDiveStartEpochSec_;
     header.endEpochSec = lastDiveEndEpochSec_;
@@ -303,9 +335,16 @@ void DiveComputerApp::finalizeDiveLog() {
                   dive_.maxDepthM,
                   dive_.sampleCount);
 
-    Serial.printf("[DIVE] no-fly %luh %02lum\n",
-                  noFlyMinutes / 60UL,
-                  noFlyMinutes % 60UL);
+    if (noFlyEndEpochSec_ > 0 && lastDiveEndEpochSec_ > 0) {
+        uint32_t noFlyRemainMin =
+            (noFlyEndEpochSec_ - lastDiveEndEpochSec_) / 60UL;
+
+        Serial.printf("[DIVE] no-fly %luh %02lum\n",
+                    noFlyRemainMin / 60UL,
+                    noFlyRemainMin % 60UL);
+    } else {
+        Serial.println("[DIVE] no-fly pending: relative time only");
+    }
 
     mockServices.loggerEndDive(diveCount_, durationSec, dive_.maxDepthM);
 
@@ -533,7 +572,21 @@ void DiveComputerApp::startDive() {
 
     dive_.phase = DivePhase::Normal;
     dive_.diveStartMs = millis();
-    currentDiveStartEpochSec_ = getCurrentEpochSec();
+    currentDiveBootElapsedStartSec_ = getCurrentBootElapsedSec();
+    currentDiveBootElapsedEndSec_ = 0;
+
+    if (rtsValid_) {
+        currentDiveTimeStatus_ = LogTimeStatus::TimeSynced;
+        currentDiveStartEpochSec_ = getCurrentEpochSec();
+    } else {
+        currentDiveTimeStatus_ = LogTimeStatus::RelativeOnly;
+        currentDiveStartEpochSec_ = 0;
+    }
+
+    Serial.printf("[TIME] dive start timeStatus=%u startEpoch=%lu bootElapsedStart=%lus\n",
+                (unsigned)static_cast<uint8_t>(currentDiveTimeStatus_),
+                (unsigned long)currentDiveStartEpochSec_,
+                (unsigned long)currentDiveBootElapsedStartSec_);
 
     dive_.lastDepthMs = millis();
     dive_.lastDecoUpdateMs = millis();
@@ -1164,15 +1217,23 @@ void DiveComputerApp::endDive() {
         durationSec = (now - dive_.diveStartMs) / 1000UL;
     }
 
-    lastDiveStartEpochSec_ = currentDiveStartEpochSec_;
     lastDiveDurationSec_ = durationSec;
-    lastDiveEndEpochSec_ = getCurrentEpochSec();
+
+    if (currentDiveTimeStatus_ == LogTimeStatus::TimeSynced) {
+        lastDiveStartEpochSec_ = currentDiveStartEpochSec_;
+        lastDiveEndEpochSec_ = getCurrentEpochSec();
+
+        uint32_t noFlyMinutes = calcNoFlyMinutes();
+        noFlyEndEpochSec_ = lastDiveEndEpochSec_ + noFlyMinutes * 60UL;
+    } else {
+        lastDiveStartEpochSec_ = 0;
+        lastDiveEndEpochSec_ = 0;
+        noFlyEndEpochSec_ = 0;
+    }
 
     lastDiveMaxDepthM_ = dive_.maxDepthM;
     lastDiveMinTempC_ = dive_.minTempC;
 
-    uint32_t noFlyMinutes = calcNoFlyMinutes();
-    noFlyEndEpochSec_ = lastDiveEndEpochSec_ + noFlyMinutes * 60UL;
 
     pendingDiveClose_ = true;
 
@@ -1182,9 +1243,16 @@ void DiveComputerApp::endDive() {
                   dive_.maxDepthM,
                   dive_.sampleCount);
 
-    Serial.printf("[DIVE] no-fly %luh %02lum\n",
-                  noFlyMinutes / 60UL,
-                  noFlyMinutes % 60UL);
+    if (noFlyEndEpochSec_ > 0 && lastDiveEndEpochSec_ > 0) {
+        uint32_t noFlyRemainMin =
+            (noFlyEndEpochSec_ - lastDiveEndEpochSec_) / 60UL;
+
+        Serial.printf("[DIVE] no-fly %luh %02lum\n",
+                    noFlyRemainMin / 60UL,
+                    noFlyRemainMin % 60UL);
+    } else {
+        Serial.println("[DIVE] no-fly pending: relative time only");
+    }
 
     Serial.printf("[DIVE] end tissue pN2 c0=%.3f c4=%.3f c8=%.3f c15=%.3f\n",
                   deco_.getTissuePressure(0),

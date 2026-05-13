@@ -29,7 +29,7 @@ static const uint32_t BDC_LOG_MAGIC = 0x4C434442; // 'B','D','C','L' 느낌의 m
 
 // 로그 포맷 버전입니다.
 // 나중에 저장 구조가 바뀌면 2, 3으로 올립니다.
-static const uint16_t BDC_LOG_VERSION = 1;
+static const uint16_t BDC_LOG_VERSION = 2;
 
 // 시간 상태
 enum class LogTimeStatus : uint8_t {
@@ -53,6 +53,10 @@ struct __attribute__((packed)) DiveLogHeader {
     uint8_t reserved0;           // 나중을 위한 빈칸
 
     uint32_t timeSessionId;      // 시간 세션 ID
+
+    uint32_t bootCount;          // 부팅 카운터
+    uint32_t bootElapsedStartSec;// 부팅 후 다이빙 시작까지 경과 시간
+    uint32_t bootElapsedEndSec;  // 부팅 후 다이빙 종료까지 경과 시간
 
     uint32_t startEpochSec;      // 다이빙 시작 epoch
     uint32_t endEpochSec;        // 다이빙 종료 epoch

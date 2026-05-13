@@ -177,6 +177,12 @@ bool LogStorage::clearLastDive() {
 void LogStorage::printHeader(const DiveLogHeader& header) {
     Serial.println("[LOG] ---- DiveLogHeader ----");
     Serial.printf("[LOG] diveNumber=%u\n", header.diveNumber);
+    Serial.printf("[LOG] version=%u\n", header.version);
+    Serial.printf("[LOG] timeStatus=%u\n", header.timeStatus);
+    Serial.printf("[LOG] timeSessionId=%lu\n", (unsigned long)header.timeSessionId);
+    Serial.printf("[LOG] bootCount=%lu\n", (unsigned long)header.bootCount);
+    Serial.printf("[LOG] bootElapsedStart=%lus\n", (unsigned long)header.bootElapsedStartSec);
+    Serial.printf("[LOG] bootElapsedEnd=%lus\n", (unsigned long)header.bootElapsedEndSec);
     Serial.printf("[LOG] startEpoch=%lu\n", header.startEpochSec);
     Serial.printf("[LOG] endEpoch=%lu\n", header.endEpochSec);
     Serial.printf("[LOG] duration=%lus\n", header.durationSec);
