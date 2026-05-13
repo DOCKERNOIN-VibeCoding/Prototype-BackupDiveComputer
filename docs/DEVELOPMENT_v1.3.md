@@ -575,18 +575,25 @@ DiveLogHeader 저장/로드 구현됨
 
 ```text
 1. Surface / PostDive 진입 시 GPS 자동 search 시작
+
 2. Surface / PostDive GPS retry 정책 적용
    - 30초 x 6회
    - 실패 시 GPS OFF
+
 3. Charging 진입 시 GPS search + BLE advertising 자동 시작
+
 4. Dive 진입 시 GPS/BLE 자동 OFF
+
 5. PostDive 중 재입수는 continuous dive로 처리
    - diveCount 증가 없음
    - 새 log start 없음
+
 6. PostDive → Surface 전환 시 최종 로그 close/save
+
 7. Surface 이후 재입수는 repetitive dive로 Serial log 구분
    - tissue loading 유지
    - 새 로그 시작
+
 8. Buzzer 정책 정리
    - 이벤트 알림: 1회
    - 긍정 신호: 2회
@@ -594,6 +601,46 @@ DiveLogHeader 저장/로드 구현됨
    - POST DIVE 진입음 제거
    - Safety Stop 일반 상태음 제거
    - MISSED DECO 3회 경고음 추가
+
+9. Mock GPS 자동 fix 시뮬레이션 추가
+   - GPS search 시작 후 일정 시간 뒤 GPS valid 처리
+   - Surface / Charging UI에서 G blinking → G steady 확인 가능
+
+10. BLE access window 정책 추가
+   - Qi/Charging 감지 시 BLE advertising 시작
+   - Charging 중에는 BLE access window를 계속 연장
+   - Charging 해제 후에도 15분 동안 BLE 유지
+   - BLE connected 상태에서는 window와 관계없이 유지
+   - Dive 진입 시에는 BLE 즉시 OFF
+
+11. GPS fix 기반 RTS 획득 처리 추가
+   - GPS valid 상승 edge를 RTS 획득으로 처리
+   - rtsEpochSec 저장
+   - rtsAcquiredBootElapsedSec 저장
+
+12. Log format v2 적용
+   - bootCount 저장
+   - bootElapsedStartSec 저장
+   - bootElapsedEndSec 저장
+   - timeSessionId 저장
+   - RelativeOnly / TimeSynced / TimeCorrected 상태 사용
+
+13. RelativeOnly 로그 시간 보정 구현
+   - GPS RTS 획득 후 bootEpochSec 계산
+   - bootCount가 같을 때만 자동 보정
+   - timeSessionId가 같을 때만 자동 보정
+   - 보정 성공 시 TimeCorrected로 변경
+
+14. DiveLogHeader 확장
+   - gasFo2Percent
+   - ppO2MaxCentiBar
+   - decoViolation
+   - postViolationAdvisory
+   - advisoryEndEpochSec
+   - reentryCount
+   - missedStopDepthCm
+   - missedStopRemainSec
+
 ```
 
 ---
@@ -2360,3 +2407,67 @@ SURFACE 화면에서는 기존 다이빙 정보를 계속 보여주며 DECO.VIOL
 재입수 시에는 tissue state 기반으로 DECO.STOP 계산을 계속 제공한다.
 단, 이 기능은 재입수를 권장하는 기능이 아니라 이미 재입수한 경우 정보를 제공하기 위한 기능이다.
 ```
+
+---
+
+# v1.3.6 Remaining Work Toward Tag
+
+v1.3.6 태그 생성 전 남은 핵심 작업은 다음과 같다.
+
+## 1. 검증
+
+- Wokwi에서 일반 다이빙 로그 저장 확인
+- RTS 확보 전 다이빙 시작 시 RelativeOnly 로그 생성 확인
+- 이후 GPS RTS 획득 시 TimeCorrected 보정 확인
+- bootCount mismatch 시 자동 보정하지 않는지 확인
+- timeSessionId mismatch 시 자동 보정하지 않는지 확인
+- BLE access window 15분 정책 확인
+- Dive 진입 시 GPS/BLE 즉시 OFF 확인
+
+## 2. 이벤트 영구 저장
+
+현재 대부분의 이벤트는 Serial log 중심이다.
+
+남은 작업:
+
+- eventCount 실제 증가
+- DiveEvent 저장
+- logDiveEvent()를 storage 기록으로 확장
+- MISSED DECO event 저장
+- DECO REENTRY event 저장
+- DECO CLEARED AFTER REENTRY event 저장
+- advisory started / ended event 저장
+
+## 3. MOD / Nitrox warning
+
+남은 작업:
+
+- FO2 > 21%일 때 MOD 표시
+- MOD 초과 시 PPO2 HIGH 또는 MOD EXCEEDED 표시
+- MOD warning event 저장
+- EAN32 / EAN36 시나리오 테스트
+
+## 4. UI priority 정리
+
+남은 작업:
+
+- LOW BAT
+- ASCENT FAST
+- DECO.STOP
+- MISSED DECO
+- MOD EXCEEDED
+- S.STOP SKIPPED
+
+위 경고가 겹칠 때 표시 우선순위와 순환 표시 정책을 정리한다.
+
+## 5. BLE 실제 서비스 설계
+
+남은 작업:
+
+- BLE service UUID
+- battery characteristic
+- device info characteristic
+- log list characteristic
+- log download characteristic
+- BLE time sync characteristic
+- FO2 setting characteristic

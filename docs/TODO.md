@@ -438,23 +438,27 @@ BackupDiveComputer v1.3의 핵심 방향은 다음과 같다.
 - [x] timeStatus 저장 필드 추가
 - [x] timeSessionId 저장 필드 추가
 - [x] DECO event type enum 추가
+- [x] gas FO2 저장 필드 추가
+- [x] ppO2 max 저장 필드 추가
+- [x] deco violation flag 저장 필드 추가
+- [x] post violation advisory 저장 필드 추가
+- [x] advisory end epoch 저장 필드 추가
+- [x] missed stop depth/remain 저장 필드 추가
+- [x] reentry count 저장 필드 추가
+- [x] log format version 2 적용
+- [x] bootCount 저장 필드 추가
+- [x] bootElapsedStartSec 저장 필드 추가
+- [x] bootElapsedEndSec 저장 필드 추가
+- [x] RelativeOnly 로그를 TimeCorrected로 갱신하는 구조 구현
+
 
 ## 14.2 남은 작업
 
-- [ ] gas FO2 저장 필드 추가
-- [ ] ppO2 max 저장 필드 추가
-- [ ] deco violation flag 저장 필드 추가
-- [ ] post violation advisory 저장 필드 추가
-- [ ] advisory end epoch 저장 필드 추가
-- [ ] missed stop depth/remain 저장 필드 추가
-- [ ] reentry count 저장 필드 추가
-- [ ] log format version 2 필요성 검토
-- [ ] bootCount 저장 필드 추가
-- [ ] bootElapsedStartSec 저장 필드 추가
-- [ ] bootElapsedEndSec 저장 필드 추가
 - [ ] timeCorrectionSource 저장 필드 검토
-- [ ] RelativeOnly 로그를 TimeCorrected로 갱신하는 구조 설계
-- [ ] log format v2 전환 필요성 검토
+- [ ] log format v2 실제 하드웨어 LittleFS 저장/로드 검증
+- [ ] 기존 v1 로그와의 호환 또는 마이그레이션 정책 결정
+- [ ] Subsurface XML export에 log format v2 필드 반영
+
 
 ---
 
@@ -471,30 +475,22 @@ BackupDiveComputer v1.3의 핵심 방향은 다음과 같다.
 - [x] 다이빙 종료 시 `DiveLogHeader` 저장
 - [x] `log info` mock command
 - [x] `log clear` mock command
+- [x] GPS/BLE RTS 획득 후 pending 또는 RelativeOnly 로그 시간 보정
+- [x] 보정된 로그를 LittleFS/RAM fallback에 다시 저장
 
 ## 15.2 남은 작업
 
-- [ ] 다이빙 시작 시 log start record 생성
 - [ ] 다이빙 중 sample 영구 저장
 - [ ] event 영구 저장
-- [ ] `eventCount` 실제 반영
-- [ ] `sampleCount` 실제 저장 sample 수와 일치 검증
-- [ ] `logDiveEvent()`를 Serial 출력에서 storage 기록으로 확장
+- [ ] eventCount 실제 반영
+- [ ] sampleCount 실제 저장 sample 수와 일치 검증
+- [ ] logDiveEvent()를 Serial 출력에서 storage 기록으로 확장
 - [ ] MOD warning event 저장
 - [ ] DECO.STOP started event 저장
 - [ ] DECO.STOP completed event 저장
 - [ ] MISSED DECO event 저장
-- [ ] DECO violation surfaced event 저장
-- [ ] advisory started/ended event 저장
 - [ ] re-entry event 저장
 - [ ] cleared-after-reentry event 저장
-- [ ] LittleFS 저장 실패 시 fallback 정책 정리
-- [x] PostDive 진입 시 로그를 확정 저장하지 않고 pending 상태로 유지
-- [x] PostDive → Surface 전환 시 실제 로그 종료 확정
-- [x] PostDive 중 재입수 시 기존 로그에 이어 기록
-- [x] Surface 진입 후 재잠수 시 반복다이빙 로그로 새로 시작
-- [ ] GPS/BLE RTS 획득 후 pending 또는 RelativeOnly 로그 시간 보정
-- [ ] 보정된 로그를 LittleFS에 다시 저장
 
 ---
 
@@ -506,34 +502,30 @@ BackupDiveComputer v1.3의 핵심 방향은 다음과 같다.
 - [x] `timeSessionId` 필드 추가
 - [x] epoch 기반 Surface / No-Fly 계산 구조 추가
 - [x] 48시간 advisory는 epoch 기반으로 계산
+- [x] GPS fix 시 RTS 획득 처리
+- [x] bootCount 저장
+- [x] timeSessionId 생성 로직 구현
+- [x] bootElapsedStartSec 계산 구현
+- [x] bootElapsedEndSec 계산 구현
+- [x] currentBootElapsedSec helper 구현
+- [x] RelativeOnly 상태 실제 적용
+- [x] TimeSynced 상태 실제 적용
+- [x] GPS 시간이 나중에 잡혔을 때 로그 시간 보정
+- [x] bootCount mismatch 시 자동 보정 금지 구현
+- [x] timeSessionId mismatch 시 자동 보정 금지 구현
+- [x] TimeCorrected 상태로 로그 header 갱신
+
 
 ## 16.2 남은 작업
 
-- [ ] bootCount 저장
-- [ ] 실제 timeSessionId 생성 로직 구현
-- [ ] reset reason 기록
-- [ ] GPS time synced 상태 추가
-- [ ] BLE time synced 상태 추가
-- [ ] RTC 사용 여부 검토
-- [ ] `RelativeOnly` 상태 실제 적용
-- [ ] `TimeCorrected` 상태 실제 적용
-- [ ] `SyncFailed` 상태 실제 적용
-- [ ] GPS 시간이 나중에 잡혔을 때 로그 시간 보정
-- [ ] timeSessionId가 다르면 보정하지 않도록 구현
-- [ ] epoch time이 없을 때 advisory 상대시간 처리 정책 결정
-- [ ] bootCount를 NVS/Preferences에 영구 저장
-- [ ] bootCount 증가 시점 정의
-- [ ] bootElapsedStartSec / bootElapsedEndSec 계산 구현
-- [ ] currentBootElapsedSec helper 구현
-- [ ] RTS 획득 시 bootEpochSec 계산 구현
-- [ ] bootCount mismatch 시 자동 보정 금지 구현
-- [ ] timeSessionId mismatch 시 자동 보정 금지 구현
-- [ ] TimeCorrected 상태로 로그 header 갱신
-- [ ] SyncFailed 상태 전환 조건 정의
+- [ ] BLE app time synced 상태 추가
+- [ ] BLE time sync를 RTS source로 사용하는 정책 구현
 - [ ] GPS time과 BLE time의 우선순위 구현
-- [ ] bootElapsed는 Deep Sleep continuity를 전제로 하지 않는다고 명시
-- [ ] bootElapsed를 awake boot session 기준 elapsed time으로 정의
-- [ ] Deep Sleep 미사용 정책과 time correction 정책 연결
+- [ ] SyncFailed 상태 전환 조건 정의
+- [ ] bootCount / timeSessionId 보정 실패 시 Serial log 외 영구 이벤트 저장
+- [ ] RelativeOnly / TimeCorrected 로그 Wokwi 시나리오 검증
+- [ ] 재부팅 후 TimeCorrected 로그 preload 검증
+
 
 ---
 
@@ -596,22 +588,20 @@ BackupDiveComputer v1.3의 핵심 방향은 다음과 같다.
 
 ## 19.1 남은 작업
 
-- [ ] BLE는 충전 중에만 활성화하는 정책 유지
-- [ ] BLE service 설계
+- [ ] BLE service UUID 설계
 - [ ] device info characteristic 설계
 - [ ] battery status characteristic 설계
 - [ ] log list characteristic 설계
 - [ ] log download characteristic 설계
-- [ ] compact log 전송 방식 설계
-- [ ] 앱 설정 characteristic 설계
+- [ ] BLE time sync characteristic 설계
 - [ ] FO2 설정 characteristic 설계
-- [ ] ppO2 max 설정 characteristic 검토
-- [ ] FO2 설정값 NVS 저장 구조 설계
-- [ ] app-configured FO2와 compile-time default 우선순위 결정
-- [ ] BLE app time sync characteristic 설계
-- [ ] BLE time sync를 RTS source로 사용하는 정책 구현
-- [ ] BLE connected 상태와 advertising 상태를 UI top bar에 반영
-- [ ] BLE 연결 중에는 Qi 분리 직후 OFF 지연 여부 정책 결정
+- [ ] BLE transfer active 중 power-off 지연 정책 구현
+- [ ] Firmware update / OTA 가능성 검토
+- [x] BLE connected 상태와 advertising 상태를 UI top bar에 반영
+- [x] BLE connected / advertising 상태 Wokwi UI 검증
+- [x] BLE 연결 중에는 Qi 분리 직후 OFF 지연 여부 정책 결정
+- [x] Qi/Charging 해제 후 BLE 15분 access window 정책 구현
+
 
 ---
 

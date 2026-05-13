@@ -19,6 +19,15 @@
 - Implemented continuous dive handling for re-entry during PostDive.
 - Added Serial log distinction for repetitive dives after Surface mode.
 - Added MISSED DECO 3-beep negative alert.
+- Added automatic mock GPS fix simulation after GPS search starts.
+- Added BLE access window policy after Qi/Charging wake.
+- Kept BLE available for 15 minutes after Charging is removed.
+- Added GPS RTS acquisition when GPS fix becomes valid.
+- Added log format v2 fields for bootCount and boot elapsed time.
+- Added RelativeOnly / TimeSynced log time handling.
+- Added RelativeOnly to TimeCorrected log time correction using GPS RTS.
+- Extended DiveLogHeader with gas, ppO2, DECO violation, advisory, re-entry, and missed stop fields.
+
 
 ### Changed
 - Planned DECO violation PostDive behavior to use the same 3-minute PostDive duration as normal surfacing.
@@ -28,10 +37,16 @@
 - Changed final compact log save to occur at PostDive → Surface transition.
 - Changed MISSED DECO PostDive behavior to use the same 3-minute PostDive duration as normal surfacing.
 - Reduced non-critical buzzer alerts according to the 1/2/3 beep policy.
+- Changed BLE policy so Charging removal does not immediately turn BLE off.
+- Changed BLE behavior to stay active while connected, except when entering Dive state.
+- Changed compact log time handling to store relative boot elapsed time when RTS is unavailable.
+
 
 ### Planned
-- Add bootCount and boot elapsed fields to log format v2 or a separate time-correction record.
-- Implement GPS/BLE RTS correction for RelativeOnly logs.
+- Implement persistent DiveEvent storage.
+- Implement real BLE services for device info, battery, log list, log download, time sync, and gas setting.
+- Add MOD / ppO2 warning UI and event logging.
+- Add scenario coverage for RTS correction, missed DECO, re-entry, EAN32, and MOD exceeded.
 
 
 ## v1.3-dev
