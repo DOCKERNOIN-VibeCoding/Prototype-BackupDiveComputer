@@ -392,9 +392,14 @@ void DiveComputerApp::finalizeDiveLog() {
 
     header.postViolationAdvisory = postViolationAdvisory_ ? 1 : 0;
     header.reentryCount = reentryCount_;
-    header.missedStopDepthCm = (uint16_t)(missedStopDepthM_ * 100.0f + 0.5f);
+    if (dive_.decoViolation) {
+        header.missedStopDepthCm = (uint16_t)(missedStopDepthM_ * 100.0f + 0.5f);
+        header.missedStopRemainSec = missedStopRemainSec_;
+    } else {
+        header.missedStopDepthCm = 0;
+        header.missedStopRemainSec = 0;
+    }
 
-    header.missedStopRemainSec = missedStopRemainSec_;
     header.advisoryEndEpochSec = postViolationAdvisoryEndEpochSec_;
 
     header.maxDepthCm = (int16_t)(lastDiveMaxDepthM_ * 100.0f);
@@ -682,6 +687,8 @@ void DiveComputerApp::startDive() {
 
     missedStopDepthM_ = 0.0f;
     missedStopRemainSec_ = 0;
+    lastRequiredDecoStopDepthM_ = 0.0f;
+    lastRequiredDecoStopRemainSec_ = 0;
 
     // Once a new dive starts, previous-surface preload offset is no longer used.
     surfaceIntervalOffsetSec_ = 0;
@@ -1104,6 +1111,12 @@ if (dive_.depthM < DIVE_END_DEPTH_M) {
             } else {
                 dive_.lastDecoStopTickMs = now;
             }
+
+            if (dive_.decoStopDepthM > 0) {
+                lastRequiredDecoStopDepthM_ = (float)dive_.decoStopDepthM;
+                lastRequiredDecoStopRemainSec_ = dive_.decoStopRemainSec;
+            }
+
         }
 
             static uint32_t lastCeilingAlarmMs = 0;
@@ -1296,8 +1309,13 @@ void DiveComputerApp::endDive() {
         clearedAfterReentry_ = false;
 
         Serial.println("[DIVE] DECO violation: surfaced with active ceiling");
-        missedStopDepthM_ = (float)dive_.decoStopDepthM;
-        missedStopRemainSec_ = dive_.decoStopRemainSec;
+        if (lastRequiredDecoStopDepthM_ > 0.0f) {
+            missedStopDepthM_ = lastRequiredDecoStopDepthM_;
+            missedStopRemainSec_ = lastRequiredDecoStopRemainSec_;
+        } else {
+            missedStopDepthM_ = (float)dive_.decoStopDepthM;
+            missedStopRemainSec_ = dive_.decoStopRemainSec;
+        }
 
         Serial.printf("[DECO] missed stop depth=%.1fm remain=%lus\n",
                       missedStopDepthM_,

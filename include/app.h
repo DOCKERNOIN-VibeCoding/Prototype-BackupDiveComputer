@@ -125,6 +125,8 @@ private:
     uint8_t reentryCount_ = 0;
     bool clearedAfterReentry_ = false;
     float missedStopDepthM_ = 0.0f;
+    float lastRequiredDecoStopDepthM_ = 0.0f;
+    uint32_t lastRequiredDecoStopRemainSec_ = 0;
     uint32_t missedStopRemainSec_ = 0;
     bool pendingDiveClose_ = false;
 
