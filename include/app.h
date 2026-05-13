@@ -92,6 +92,7 @@ private:
     uint32_t lastUiMs_ = 0;
 
     uint32_t chargingEnterMs_ = 0;
+    uint32_t bleAccessWindowUntilMs_ = 0;
 
     uint32_t surfaceIntervalStartMs_ = 0;
     // Used for scenario preload.

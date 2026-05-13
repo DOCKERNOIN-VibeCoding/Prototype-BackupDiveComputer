@@ -69,6 +69,11 @@
 #define GPS_SURFACE_MAX_ATTEMPTS      6
 #define MOCK_GPS_AUTO_FIX_DELAY_MS    5000UL
 
+// BLE access window after Qi/Charging wake.
+// While charging, this window is continuously extended.
+// After charging stops, BLE stays available for 15 minutes.
+#define BLE_ACCESS_WINDOW_MS          900000UL
+
 // ============================================================
 // Display
 // ============================================================

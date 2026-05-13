@@ -107,6 +107,8 @@ void DiveComputerApp::updateGpsBleAutoPower() {
     }
 
     if (state_ == SystemState::Charging) {
+        bleAccessWindowUntilMs_ = now + BLE_ACCESS_WINDOW_MS;
+
         if (!mockServices.isGpsValid()) {
             mockServices.setGpsSearching();
         }
@@ -117,6 +119,22 @@ void DiveComputerApp::updateGpsBleAutoPower() {
         }
 
         return;
+    }
+
+    // BLE access window policy:
+    // - After Qi/Charging wake, BLE remains available for 15 minutes.
+    // - While BLE is connected, keep BLE on regardless of the window.
+    // - Dive state is the only immediate BLE OFF case.
+    if (mockServices.isBleConnected()) {
+        // Keep current BLE connection.
+    } else if (bleAccessWindowUntilMs_ != 0 &&
+               now < bleAccessWindowUntilMs_) {
+        if (!mockServices.isBleAdvertising()) {
+            mockServices.setBleAdvertising();
+        }
+    } else {
+        bleAccessWindowUntilMs_ = 0;
+        mockServices.setBleOff();
     }
 
     if (!gpsLimitedSearchActive_) {
@@ -164,12 +182,13 @@ void DiveComputerApp::setState(SystemState newState) {
 
             surfaceIntervalStartMs_ = millis();
 
-            mockServices.setBleOff();
             startLimitedGpsSearch();
             break;
 
         case SystemState::Dive:
             Serial.println("[STATE] DIVE");
+
+            bleAccessWindowUntilMs_ = 0;
 
             stopLimitedGpsSearch();
             mockServices.setGpsOff();
@@ -189,6 +208,7 @@ void DiveComputerApp::setState(SystemState newState) {
             Serial.println("[STATE] CHARGING");
 
             chargingEnterMs_ = millis();
+            bleAccessWindowUntilMs_ = chargingEnterMs_ + BLE_ACCESS_WINDOW_MS;
             lastUiMs_ = 0;
 
             stopLimitedGpsSearch();
