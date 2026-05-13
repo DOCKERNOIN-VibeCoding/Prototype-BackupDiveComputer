@@ -53,6 +53,7 @@ private:
 
     bool gpsValid_ = false;
     bool gpsSearching_ = false;
+    uint32_t gpsSearchStartedMs_ = 0;
 
     uint8_t batteryPct_ = DEFAULT_BATTERY_PCT;
 

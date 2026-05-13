@@ -67,6 +67,7 @@
 
 #define GPS_SURFACE_RETRY_INTERVAL_MS 30000UL
 #define GPS_SURFACE_MAX_ATTEMPTS      6
+#define MOCK_GPS_AUTO_FIX_DELAY_MS    5000UL
 
 // ============================================================
 // Display

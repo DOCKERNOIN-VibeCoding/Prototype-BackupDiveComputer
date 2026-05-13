@@ -15,6 +15,7 @@ void MockServices::begin() {
 
     gpsValid_ = false;
     gpsSearching_ = false;
+    gpsSearchStartedMs_ = 0;
 
     batteryPct_ = DEFAULT_BATTERY_PCT;
     gfLow_ = DEFAULT_GF_LOW;
@@ -45,6 +46,17 @@ void MockServices::update(SimSensor& sensor) {
             line_ += c;
         }
     }
+        if (gpsSearching_ &&
+        !gpsValid_ &&
+        gpsSearchStartedMs_ > 0 &&
+        millis() - gpsSearchStartedMs_ >= MOCK_GPS_AUTO_FIX_DELAY_MS) {
+
+        gpsValid_ = true;
+        gpsSearching_ = false;
+        gpsSearchStartedMs_ = 0;
+
+        Serial.println("[MOCK_GPS] auto valid");
+    }
 }
 
 void MockServices::setGpsSearching() {
@@ -54,6 +66,7 @@ void MockServices::setGpsSearching() {
 
     gpsValid_ = false;
     gpsSearching_ = true;
+    gpsSearchStartedMs_ = millis();
     Serial.println("[MOCK_GPS] auto search");
 }
 
@@ -64,6 +77,7 @@ void MockServices::setGpsOff() {
 
     gpsValid_ = false;
     gpsSearching_ = false;
+    gpsSearchStartedMs_ = 0;
     Serial.println("[MOCK_GPS] auto off");
 }
 
@@ -212,6 +226,7 @@ void MockServices::handleCommand(String cmd, SimSensor& sensor) {
     if (cmd == "gps search") {
         gpsValid_ = false;
         gpsSearching_ = true;
+        gpsSearchStartedMs_ = millis();
         Serial.println("[MOCK_GPS] searching");
         return;
     }
@@ -219,6 +234,7 @@ void MockServices::handleCommand(String cmd, SimSensor& sensor) {
     if (cmd == "gps ok") {
         gpsValid_ = true;
         gpsSearching_ = false;
+        gpsSearchStartedMs_ = 0;
         Serial.println("[MOCK_GPS] valid");
         return;
     }
@@ -226,6 +242,7 @@ void MockServices::handleCommand(String cmd, SimSensor& sensor) {
     if (cmd == "gps fail") {
         gpsValid_ = false;
         gpsSearching_ = false;
+        gpsSearchStartedMs_ = 0;
         Serial.println("[MOCK_GPS] invalid");
         return;
     }
