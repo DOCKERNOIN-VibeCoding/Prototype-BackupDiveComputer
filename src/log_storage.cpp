@@ -190,5 +190,14 @@ void LogStorage::printHeader(const DiveLogHeader& header) {
     Serial.printf("[LOG] minTemp=%.1fC\n", header.minTempDeciC / 10.0f);
     Serial.printf("[LOG] sampleCount=%u\n", header.sampleCount);
     Serial.printf("[LOG] noFlyEndEpoch=%lu\n", header.noFlyEndEpochSec);
+    Serial.printf("[LOG] gasFo2=%u%%\n", header.gasFo2Percent);
+    Serial.printf("[LOG] ppO2Max=%.2fbar\n", header.ppO2MaxCentiBar / 100.0f);
+    Serial.printf("[LOG] decoViolation=%u\n", header.decoViolation);
+    Serial.printf("[LOG] postViolationAdvisory=%u\n", header.postViolationAdvisory);
+    Serial.printf("[LOG] advisoryEndEpoch=%lu\n", (unsigned long)header.advisoryEndEpochSec);
+    Serial.printf("[LOG] reentryCount=%u\n", header.reentryCount);
+    Serial.printf("[LOG] missedStopDepth=%.1fm\n", header.missedStopDepthCm / 100.0f);
+    Serial.printf("[LOG] missedStopRemain=%lus\n", (unsigned long)header.missedStopRemainSec);
+
     Serial.println("[LOG] -----------------------");
 }

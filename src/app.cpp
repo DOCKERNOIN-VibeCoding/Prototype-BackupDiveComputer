@@ -386,6 +386,17 @@ void DiveComputerApp::finalizeDiveLog() {
 
     header.noFlyEndEpochSec = noFlyEndEpochSec_;
 
+    header.gasFo2Percent = DIVE_GAS_FO2_PERCENT;
+    header.ppO2MaxCentiBar = (uint16_t)(DIVE_GAS_PPO2_MAX_BAR * 100.0f + 0.5f);
+    header.decoViolation = dive_.decoViolation ? 1 : 0;
+
+    header.postViolationAdvisory = postViolationAdvisory_ ? 1 : 0;
+    header.reentryCount = reentryCount_;
+    header.missedStopDepthCm = (uint16_t)(missedStopDepthM_ * 100.0f + 0.5f);
+
+    header.missedStopRemainSec = missedStopRemainSec_;
+    header.advisoryEndEpochSec = postViolationAdvisoryEndEpochSec_;
+
     header.maxDepthCm = (int16_t)(lastDiveMaxDepthM_ * 100.0f);
     header.avgDepthCm = 0;
     header.minTempDeciC = (int16_t)(lastDiveMinTempC_ * 10.0f);
@@ -469,6 +480,20 @@ void DiveComputerApp::applyScenarioPreload() {
         lastDiveMinTempC_ = savedHeader.minTempDeciC / 10.0f;
 
         noFlyEndEpochSec_ = savedHeader.noFlyEndEpochSec;
+
+        uint32_t nowEpoch = getCurrentEpochSec();
+
+        postViolationAdvisory_ =
+            savedHeader.postViolationAdvisory &&
+            savedHeader.advisoryEndEpochSec > nowEpoch;
+
+        postViolationAdvisoryEndEpochSec_ =
+            postViolationAdvisory_ ? savedHeader.advisoryEndEpochSec : 0;
+
+        activeDecoViolation_ = savedHeader.decoViolation != 0;
+        reentryCount_ = savedHeader.reentryCount;
+        missedStopDepthM_ = savedHeader.missedStopDepthCm / 100.0f;
+        missedStopRemainSec_ = savedHeader.missedStopRemainSec;
 
         Serial.println("[LOG] Surface preload from saved compact log");
         return;
@@ -654,6 +679,9 @@ void DiveComputerApp::startDive() {
     uint32_t surfaceIntervalSec = getSurfaceIntervalSec();
 
     dive_ = DiveRuntime();
+
+    missedStopDepthM_ = 0.0f;
+    missedStopRemainSec_ = 0;
 
     // Once a new dive starts, previous-surface preload offset is no longer used.
     surfaceIntervalOffsetSec_ = 0;
@@ -1268,6 +1296,12 @@ void DiveComputerApp::endDive() {
         clearedAfterReentry_ = false;
 
         Serial.println("[DIVE] DECO violation: surfaced with active ceiling");
+        missedStopDepthM_ = (float)dive_.decoStopDepthM;
+        missedStopRemainSec_ = dive_.decoStopRemainSec;
+
+        Serial.printf("[DECO] missed stop depth=%.1fm remain=%lus\n",
+                      missedStopDepthM_,
+                      (unsigned long)missedStopRemainSec_);
 
         beep(ALARM_FREQ_CEILING_VIOL, 150);
         delay(100);

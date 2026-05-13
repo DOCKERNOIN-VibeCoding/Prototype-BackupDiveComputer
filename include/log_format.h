@@ -64,6 +64,17 @@ struct __attribute__((packed)) DiveLogHeader {
 
     uint32_t noFlyEndEpochSec;   // No-Fly 종료 epoch
 
+    uint8_t gasFo2Percent;       // 산소 비율 %
+    uint16_t ppO2MaxCentiBar;    // ppO2 max x100, 예: 1.40bar = 140
+    uint8_t decoViolation;       // DECO violation 여부
+
+    uint8_t postViolationAdvisory; // 48h advisory 여부
+    uint8_t reentryCount;          // missed DECO 후 재입수 횟수
+    uint16_t missedStopDepthCm;    // missed stop depth, cm 단위
+
+    uint32_t missedStopRemainSec;  // missed stop remain seconds
+    uint32_t advisoryEndEpochSec;  // advisory 종료 epoch
+
     int16_t maxDepthCm;          // 최대 수심, cm 단위
     int16_t avgDepthCm;          // 평균 수심, cm 단위, 아직 미사용이면 0
     int16_t minTempDeciC;        // 최저 수온, 0.1도 단위
