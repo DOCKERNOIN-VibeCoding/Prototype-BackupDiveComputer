@@ -491,6 +491,7 @@ BackupDiveComputer v1.3의 핵심 방향은 다음과 같다.
 - [ ] MISSED DECO event 저장
 - [ ] re-entry event 저장
 - [ ] cleared-after-reentry event 저장
+- [ ] Add `docs/LOG_FORMAT.md` defining native BDC log policy, DiveSample/DiveEvent persistence, BLE raw log transfer, and future Subsurface XML/UDDF export strategy.
 
 ---
 
