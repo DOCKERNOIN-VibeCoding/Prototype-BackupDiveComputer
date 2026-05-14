@@ -27,9 +27,14 @@
 // BDC_LOG_MAGIC은 "이 파일은 BackupDiveComputer 로그다"라는 표식입니다.
 static const uint32_t BDC_LOG_MAGIC = 0x4C434442; // 'B','D','C','L' 느낌의 magic 값
 
-// 로그 포맷 버전입니다.
-// 나중에 저장 구조가 바뀌면 2, 3으로 올립니다.
-static const uint16_t BDC_LOG_VERSION = 2;
+// v3:
+// - Header + Samples + Events full persistence
+// - DiveSample.timeSec widened to uint32_t
+// - DiveEvent.value widened to int32_t
+static const uint16_t BDC_LOG_VERSION = 3;
+
+static const uint16_t BDC_MAX_DIVE_SAMPLES = 1024;
+static const uint16_t BDC_MAX_DIVE_EVENTS  = 128;
 
 // 시간 상태
 enum class LogTimeStatus : uint8_t {
@@ -92,7 +97,7 @@ struct __attribute__((packed)) DiveLogHeader {
 // 다이빙 중 일정 간격으로 저장할 샘플 구조입니다.
 // v7.3 첫 단계에서는 구조만 만들어 둡니다.
 struct __attribute__((packed)) DiveSample {
-    uint16_t timeSec;            // 다이빙 시작 후 몇 초
+    uint32_t timeSec;            // 다이빙 시작 후 몇 초
     int16_t depthCm;             // 수심 cm
     int16_t tempDeciC;           // 수온 0.1도 단위
     uint16_t ndlOrTtsMin;        // NDL 또는 TTS
@@ -110,15 +115,27 @@ enum class DiveEventType : uint8_t {
     EVENT_POST_VIOLATION_ADVISORY_STARTED = 9,
     EVENT_POST_VIOLATION_ADVISORY_ENDED = 10,
     EVENT_CEILING_EXCEEDED = 11,
-    EVENT_CEIL_GT_18M = 12
+    EVENT_CEIL_GT_18M = 12,
+
+    EVENT_SAFETY_STOP_STARTED = 20,
+    EVENT_SAFETY_STOP_COMPLETED = 21,
+    EVENT_SAFETY_STOP_SKIPPED = 22,
+    EVENT_SAFETY_STOP_CANCELLED_DEEP = 23,
+
+    EVENT_ASCENT_RATE_WARN = 30,
+    EVENT_BATTERY_LOW = 31,
+
+    EVENT_PPO2_HIGH = 40,
+    EVENT_MOD_EXCEEDED = 41
 };
 
 // 이벤트 구조입니다.
 // 예: 안전정지 시작, 감압 진입, 빠른 상승 경고 등
 struct __attribute__((packed)) DiveEvent {
-    uint16_t timeSec;            // 다이빙 시작 후 몇 초
-    uint8_t type;                // 이벤트 종류
-    uint8_t value;               // 이벤트 보조값
+    uint32_t timeSec;            // 다이빙 시작 후 몇 초
+    uint8_t type;                // DiveEventType
+    uint8_t reserved[3];         // 정렬/미래 확장용
+    int32_t value;               // 이벤트별 보조값
 };
 
 #endif

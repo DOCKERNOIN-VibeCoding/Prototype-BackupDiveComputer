@@ -40,6 +40,16 @@ struct DiveRuntime {
     uint32_t lastLogMs = 0;
 
     uint16_t sampleCount = 0;
+    uint16_t eventCount = 0;
+
+    DiveSample samples[BDC_MAX_DIVE_SAMPLES] = {};
+    DiveEvent events[BDC_MAX_DIVE_EVENTS] = {};
+
+    uint32_t sumDepthCm = 0;
+    bool sampleOverflowWarned = false;
+    bool eventOverflowWarned = false;
+    bool ascentWarnActive = false;
+    bool decoStopCompletedEventLogged = false;
 
     bool decoEntered = false;
     uint8_t decoStopDepthM = 0;
@@ -181,7 +191,8 @@ private:
     uint32_t getSurfaceIntervalSec() const;
     uint32_t getNoFlyRemainSec() const;
     void updatePostViolationAdvisory();
-    void logDiveEvent(DiveEventType type, const char* eventName);
+    void recordDiveSample(uint16_t ndlOrTtsMin);
+    void logDiveEvent(DiveEventType type, const char* eventName, int32_t value = 0);
     void drawSurfaceInfoScreen();
     bool shouldShowChargingSplash(uint32_t now) const;
 };

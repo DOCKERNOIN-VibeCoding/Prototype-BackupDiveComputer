@@ -7,6 +7,7 @@
 #include "log_storage.h"
 
 #include <math.h>
+#include <limits.h>
 
 #if defined(ESP32)
 #include <esp_timer.h>
@@ -14,6 +15,34 @@
 #endif
 
 DiveComputerApp app;
+
+static int16_t depthToCmClamped(float depthM) {
+    long cm = lroundf(depthM * 100.0f);
+
+    if (cm < 0) {
+        cm = 0;
+    }
+
+    if (cm > INT16_MAX) {
+        cm = INT16_MAX;
+    }
+
+    return (int16_t)cm;
+}
+
+static int16_t tempToDeciCClamped(float tempC) {
+    long deci = lroundf(tempC * 10.0f);
+
+    if (deci < INT16_MIN) {
+        deci = INT16_MIN;
+    }
+
+    if (deci > INT16_MAX) {
+        deci = INT16_MAX;
+    }
+
+    return (int16_t)deci;
+}
 
 void DiveComputerApp::begin() {
     Serial.println();
@@ -274,7 +303,7 @@ void DiveComputerApp::correctStoredRelativeLogIfPossible() {
         header.noFlyEndEpochSec = header.endEpochSec + noFlyMinutes * 60UL;
     }
 
-    if (logStorage.saveLastDive(header)) {
+    if (logStorage.updateLastDiveHeader(header)) {
         lastDiveStartEpochSec_ = header.startEpochSec;
         lastDiveEndEpochSec_ = header.endEpochSec;
         lastDiveDurationSec_ = header.durationSec;
@@ -402,12 +431,18 @@ void DiveComputerApp::finalizeDiveLog() {
 
     header.advisoryEndEpochSec = postViolationAdvisoryEndEpochSec_;
 
-    header.maxDepthCm = (int16_t)(lastDiveMaxDepthM_ * 100.0f);
-    header.avgDepthCm = 0;
-    header.minTempDeciC = (int16_t)(lastDiveMinTempC_ * 10.0f);
+    header.maxDepthCm = depthToCmClamped(lastDiveMaxDepthM_);
+
+    if (dive_.sampleCount > 0) {
+        header.avgDepthCm = (int16_t)(dive_.sumDepthCm / dive_.sampleCount);
+    } else {
+        header.avgDepthCm = 0;
+    }
+
+    header.minTempDeciC = tempToDeciCClamped(lastDiveMinTempC_);
 
     header.sampleCount = dive_.sampleCount;
-    header.eventCount = 0;
+    header.eventCount = dive_.eventCount;
 
     if (mockServices.isGpsValid()) {
         header.gpsValid = 1;
@@ -433,13 +468,18 @@ void DiveComputerApp::finalizeDiveLog() {
         Serial.println("[RTS] pending RelativeOnly log updated to TimeCorrected");
     }
 
-    logStorage.saveLastDive(header);
+    logStorage.saveLastDive(header,
+                            dive_.samples,
+                            dive_.sampleCount,
+                            dive_.events,
+                            dive_.eventCount);
 
-    Serial.printf("[DIVE] final close #%u duration=%lus max=%.1fm samples=%u\n",
-                  diveCount_,
-                  durationSec,
-                  dive_.maxDepthM,
-                  dive_.sampleCount);
+    Serial.printf("[DIVE] final close #%u duration=%lus max=%.1fm samples=%u events=%u\n",
+                diveCount_,
+                durationSec,
+                dive_.maxDepthM,
+                dive_.sampleCount,
+                dive_.eventCount);
 
     if (noFlyEndEpochSec_ > 0 && lastDiveEndEpochSec_ > 0) {
         uint32_t noFlyRemainMin =
@@ -738,7 +778,10 @@ void DiveComputerApp::startDive() {
         clearedAfterReentry_ = false;
 
         Serial.printf("[DECO] Re-entry after missed DECO count=%u\n", reentryCount_);
-        logDiveEvent(DiveEventType::EVENT_DECO_REENTRY, "EVENT_DECO_REENTRY");
+        logDiveEvent(DiveEventType::EVENT_DECO_REENTRY,
+                    "EVENT_DECO_REENTRY",
+                    reentryCount_);
+
     }
 
     if (repetitiveDive) {
@@ -880,12 +923,23 @@ if (dive_.depthM < DIVE_END_DEPTH_M) {
     static uint32_t lastAscentAlarmMs = 0;
 
     if (dive_.ascentRateMpm >= ASC_DANGER_RATE_MPM) {
+        if (!dive_.ascentWarnActive) {
+            dive_.ascentWarnActive = true;
+
+            logDiveEvent(DiveEventType::EVENT_ASCENT_RATE_WARN,
+                        "EVENT_ASCENT_RATE_WARN",
+                        (int32_t)lroundf(dive_.ascentRateMpm * 10.0f));
+        }
+
         if (now - lastAscentAlarmMs >= 3000UL) {
             lastAscentAlarmMs = now;
             Serial.printf("[ALARM] Fast ascent %.1f m/min\n", dive_.ascentRateMpm);
             beepTripleWarning();
         }
+    } else if (dive_.ascentRateMpm < ASC_DOT_START_RATE_MPM) {
+        dive_.ascentWarnActive = false;
     }
+
 
 // ------------------------------------------------------------
 // Dive phase logic
@@ -914,7 +968,8 @@ if (dive_.phase != DivePhase::Deco) {
 
         Serial.println("[DIVE] Enter DECO");
         logDiveEvent(DiveEventType::EVENT_DECO_REQUIRED,
-                    "EVENT_DECO_REQUIRED");
+                    "EVENT_DECO_REQUIRED",
+                    (int32_t)priorityDecoInfo.stop_depth_m * 100);
 
         beep(ALARM_FREQ_DECO_ENTER, 150);
         delay(100);
@@ -942,7 +997,11 @@ if (dive_.phase != DivePhase::Deco) {
                 dive_.phase = DivePhase::SafetyStop;
 
                 Serial.println("[DIVE] Enter SAFETY STOP");
+                logDiveEvent(DiveEventType::EVENT_SAFETY_STOP_STARTED,
+                            "EVENT_SAFETY_STOP_STARTED",
+                            SAFETY_STOP_DURATION_S);
                 break;
+
             }
 
             break;
@@ -980,6 +1039,9 @@ if (dive_.phase != DivePhase::Deco) {
                     dive_.phase = DivePhase::Normal;
 
                     Serial.println("[DIVE] Safety stop COMPLETE");
+                    logDiveEvent(DiveEventType::EVENT_SAFETY_STOP_COMPLETED,
+                                "EVENT_SAFETY_STOP_COMPLETED",
+                                0);
                     break;
                 }
             } else {
@@ -1003,9 +1065,21 @@ if (dive_.phase != DivePhase::Deco) {
                         dive_.safetySkippedAtMs = now;
                         dive_.phase = DivePhase::Normal;
 
+                        uint32_t elapsedSec = dive_.safetyElapsedMs / 1000UL;
+                        uint32_t remainSec = 0;
+
+                        if (elapsedSec < SAFETY_STOP_DURATION_S) {
+                            remainSec = SAFETY_STOP_DURATION_S - elapsedSec;
+                        }
+
                         Serial.println("[DIVE] Safety stop SKIPPED: shallow for 30s");
+                        logDiveEvent(DiveEventType::EVENT_SAFETY_STOP_SKIPPED,
+                                    "EVENT_SAFETY_STOP_SKIPPED",
+                                    (int32_t)remainSec);
+
                         beep(700, 250);
                         break;
+
                     }
                 } else if (deepOut) {
                     dive_.safetyShallowStartMs = 0;
@@ -1023,7 +1097,11 @@ if (dive_.phase != DivePhase::Deco) {
                         dive_.phase = DivePhase::Normal;
 
                         Serial.println("[DIVE] Safety stop cancelled: dive resumed deeper than 6m for 30s");
+                        logDiveEvent(DiveEventType::EVENT_SAFETY_STOP_CANCELLED_DEEP,
+                                    "EVENT_SAFETY_STOP_CANCELLED_DEEP",
+                                    depthToCmClamped(dive_.depthM));
                         break;
+
                     }
                 } else {
                     dive_.safetyShallowStartMs = 0;
@@ -1044,6 +1122,10 @@ if (dive_.phase != DivePhase::Deco) {
             dive_.decoTtsMin = info.tts_min;
             dive_.ceilingDepthM = info.ceiling_depth_m;
             dive_.decoCeilingGtMaxStop = info.ceiling_gt_max_stop;
+
+            // ------------------------------------------------------------
+            // DECO cleared: no active ceiling / no active stop
+            // ------------------------------------------------------------
             if (!dive_.decoCeilingGtMaxStop &&
                 dive_.ceilingDepthM <= 0.5f &&
                 dive_.decoStopDepthM == 0) {
@@ -1057,11 +1139,35 @@ if (dive_.phase != DivePhase::Deco) {
                 dive_.decoTtsMin = 0;
 
                 Serial.println("[DIVE] DECO cleared: no active ceiling");
+
+                if (activeDecoViolation_) {
+                    activeDecoViolation_ = false;
+                    clearedAfterReentry_ = true;
+
+                    Serial.println("[DECO] Active violation cleared after re-entry");
+                    logDiveEvent(DiveEventType::EVENT_DECO_CLEARED_AFTER_REENTRY,
+                                 "EVENT_DECO_CLEARED_AFTER_REENTRY",
+                                 0);
+                } else {
+                    logDiveEvent(DiveEventType::EVENT_DECO_CLEARED,
+                                 "EVENT_DECO_CLEARED",
+                                 0);
+                }
+
+                beep(ALARM_FREQ_DECO_ENTER, 150);
+                delay(100);
+                beep(ALARM_FREQ_DECO_ENTER, 150);
+
                 break;
             }
 
+            // ------------------------------------------------------------
+            // Ceiling deeper than maximum supported stop
+            // ------------------------------------------------------------
             if (dive_.decoCeilingGtMaxStop && !wasCeilingGtMaxStop) {
-            logDiveEvent(DiveEventType::EVENT_CEIL_GT_18M, "EVENT_CEIL_GT_18M");
+                logDiveEvent(DiveEventType::EVENT_CEIL_GT_18M,
+                             "EVENT_CEIL_GT_18M",
+                             1800);
             }
 
             if (dive_.decoCeilingGtMaxStop) {
@@ -1069,63 +1175,84 @@ if (dive_.phase != DivePhase::Deco) {
                 dive_.decoStopTimeMin = 0;
                 dive_.decoStopRemainSec = 0;
                 dive_.lastDecoStopTickMs = now;
-            }
+            } else {
+                // ------------------------------------------------------------
+                // Active DECO stop handling
+                // ------------------------------------------------------------
+                if (dive_.lastDecoStopDepthM != dive_.decoStopDepthM) {
+                    dive_.lastDecoStopDepthM = dive_.decoStopDepthM;
+                    dive_.decoStopRemainSec = info.stop_time_sec;
+                    dive_.lastDecoStopTickMs = now;
+                    dive_.decoStopCompletedEventLogged = false;
 
-            if (!dive_.decoCeilingGtMaxStop) {
-
-            if (dive_.lastDecoStopDepthM != dive_.decoStopDepthM) {
-                dive_.lastDecoStopDepthM = dive_.decoStopDepthM;
-                dive_.decoStopRemainSec = info.stop_time_sec;
-                dive_.lastDecoStopTickMs = now;
-            }
-
-            uint32_t modelRemainSec = info.stop_time_sec;
-
-            if (modelRemainSec > 0 && modelRemainSec < dive_.decoStopRemainSec) {
-                dive_.decoStopRemainSec = modelRemainSec;
-            }
-
-            bool atDecoStop =
-                dive_.decoStopDepthM > 0 &&
-                dive_.depthM <= (float)dive_.decoStopDepthM + DECO_STOP_DEEP_MARGIN_M &&
-                dive_.depthM >= (float)dive_.decoStopDepthM - DECO_STOP_SHALLOW_MARGIN_M;
-
-            if (atDecoStop) {
-                if (now > dive_.lastDecoStopTickMs) {
-                    uint32_t deltaSec =
-                        (now - dive_.lastDecoStopTickMs) / 1000UL;
-
-                    if (deltaSec > 0) {
-                        if (deltaSec >= dive_.decoStopRemainSec) {
-                            dive_.decoStopRemainSec = 0;
-                        } else {
-                            dive_.decoStopRemainSec -= deltaSec;
-                        }
-
-                        dive_.lastDecoStopTickMs += deltaSec * 1000UL;
+                    if (dive_.decoStopDepthM > 0) {
+                        logDiveEvent(DiveEventType::EVENT_DECO_STOP_STARTED,
+                                     "EVENT_DECO_STOP_STARTED",
+                                     (int32_t)dive_.decoStopDepthM * 100);
                     }
                 }
-            } else {
-                dive_.lastDecoStopTickMs = now;
+
+                uint32_t modelRemainSec = info.stop_time_sec;
+
+                if (modelRemainSec > 0 &&
+                    modelRemainSec < dive_.decoStopRemainSec) {
+                    dive_.decoStopRemainSec = modelRemainSec;
+                }
+
+                bool atDecoStop =
+                    dive_.decoStopDepthM > 0 &&
+                    dive_.depthM <= (float)dive_.decoStopDepthM + DECO_STOP_DEEP_MARGIN_M &&
+                    dive_.depthM >= (float)dive_.decoStopDepthM - DECO_STOP_SHALLOW_MARGIN_M;
+
+                if (atDecoStop) {
+                    if (now > dive_.lastDecoStopTickMs) {
+                        uint32_t deltaSec =
+                            (now - dive_.lastDecoStopTickMs) / 1000UL;
+
+                        if (deltaSec > 0) {
+                            if (deltaSec >= dive_.decoStopRemainSec) {
+                                dive_.decoStopRemainSec = 0;
+
+                                if (!dive_.decoStopCompletedEventLogged &&
+                                    dive_.decoStopDepthM > 0) {
+                                    dive_.decoStopCompletedEventLogged = true;
+
+                                    logDiveEvent(DiveEventType::EVENT_DECO_STOP_COMPLETED,
+                                                 "EVENT_DECO_STOP_COMPLETED",
+                                                 (int32_t)dive_.decoStopDepthM * 100);
+                                }
+                            } else {
+                                dive_.decoStopRemainSec -= deltaSec;
+                            }
+
+                            dive_.lastDecoStopTickMs += deltaSec * 1000UL;
+                        }
+                    }
+                } else {
+                    dive_.lastDecoStopTickMs = now;
+                }
+
+                if (dive_.decoStopDepthM > 0) {
+                    lastRequiredDecoStopDepthM_ = (float)dive_.decoStopDepthM;
+                    lastRequiredDecoStopRemainSec_ = dive_.decoStopRemainSec;
+                }
             }
 
-            if (dive_.decoStopDepthM > 0) {
-                lastRequiredDecoStopDepthM_ = (float)dive_.decoStopDepthM;
-                lastRequiredDecoStopRemainSec_ = dive_.decoStopRemainSec;
-            }
-
-        }
-
+            // ------------------------------------------------------------
+            // Ceiling violation
+            // ------------------------------------------------------------
             static uint32_t lastCeilingAlarmMs = 0;
 
-                if (dive_.ceilingDepthM > 0.5f &&
-                    dive_.depthM < dive_.ceilingDepthM - 0.5f) {
+            if (dive_.ceilingDepthM > 0.5f &&
+                dive_.depthM < dive_.ceilingDepthM - 0.5f) {
 
-                    if (!dive_.decoViolation) {
-                        logDiveEvent(DiveEventType::EVENT_CEILING_EXCEEDED, "EVENT_CEILING_EXCEEDED");
-                    }
+                if (!dive_.decoViolation) {
+                    logDiveEvent(DiveEventType::EVENT_CEILING_EXCEEDED,
+                                 "EVENT_CEILING_EXCEEDED",
+                                 depthToCmClamped(dive_.ceilingDepthM));
+                }
 
-                    dive_.decoViolation = true;
+                dive_.decoViolation = true;
 
                 if (now - lastCeilingAlarmMs >= 2000UL) {
                     lastCeilingAlarmMs = now;
@@ -1138,6 +1265,9 @@ if (dive_.phase != DivePhase::Deco) {
                 }
             }
 
+            // ------------------------------------------------------------
+            // Legacy / secondary clear path
+            // ------------------------------------------------------------
             if (dive_.ceilingDepthM <= 0.0f && dive_.ndlMin > 0) {
                 dive_.phase = DivePhase::Normal;
 
@@ -1148,18 +1278,20 @@ if (dive_.phase != DivePhase::Deco) {
                 dive_.decoTtsMin = 0;
 
                 Serial.println("[DIVE] DECO cleared");
-                    if (activeDecoViolation_) {
-                        activeDecoViolation_ = false;
-                        clearedAfterReentry_ = true;
 
-                        Serial.println("[DECO] Active violation cleared after re-entry");
-                        logDiveEvent(DiveEventType::EVENT_DECO_CLEARED_AFTER_REENTRY,
-                                    "EVENT_DECO_CLEARED_AFTER_REENTRY");
-                    } else {
-                        logDiveEvent(DiveEventType::EVENT_DECO_CLEARED,
-                                    "EVENT_DECO_CLEARED");
-                    }
+                if (activeDecoViolation_) {
+                    activeDecoViolation_ = false;
+                    clearedAfterReentry_ = true;
 
+                    Serial.println("[DECO] Active violation cleared after re-entry");
+                    logDiveEvent(DiveEventType::EVENT_DECO_CLEARED_AFTER_REENTRY,
+                                 "EVENT_DECO_CLEARED_AFTER_REENTRY",
+                                 0);
+                } else {
+                    logDiveEvent(DiveEventType::EVENT_DECO_CLEARED,
+                                 "EVENT_DECO_CLEARED",
+                                 0);
+                }
 
                 beep(ALARM_FREQ_DECO_ENTER, 150);
                 delay(100);
@@ -1177,7 +1309,6 @@ if (dive_.phase != DivePhase::Deco) {
     // ------------------------------------------------------------
     if (now - dive_.lastLogMs >= LOG_RECORD_INTERVAL_S * 1000UL) {
         dive_.lastLogMs = now;
-        dive_.sampleCount++;
 
         uint16_t ndlOrTts = dive_.ndlMin;
 
@@ -1185,10 +1316,12 @@ if (dive_.phase != DivePhase::Deco) {
             ndlOrTts = dive_.decoTtsMin;
         }
 
+        recordDiveSample(ndlOrTts);
+
         mockServices.loggerSample(dive_.sampleCount,
-                                  dive_.depthM,
-                                  dive_.tempC,
-                                  ndlOrTts);
+                                dive_.depthM,
+                                dive_.tempC,
+                                ndlOrTts);
     }
 
     // ------------------------------------------------------------
@@ -1291,7 +1424,8 @@ void DiveComputerApp::resumeContinuousDive() {
                       reentryCount_);
 
         logDiveEvent(DiveEventType::EVENT_DECO_REENTRY,
-                     "EVENT_DECO_REENTRY");
+                    "EVENT_DECO_REENTRY",
+                    reentryCount_);
     }
 
     setState(SystemState::Dive);
@@ -1325,10 +1459,12 @@ void DiveComputerApp::endDive() {
         beep(ALARM_FREQ_CEILING_VIOL, 150);
 
         logDiveEvent(DiveEventType::EVENT_DECO_MISSED,
-                     "EVENT_DECO_MISSED");
+                    "EVENT_DECO_MISSED",
+                    depthToCmClamped(missedStopDepthM_));
 
         logDiveEvent(DiveEventType::EVENT_DECO_VIOLATION_SURFACED,
-                     "EVENT_DECO_VIOLATION_SURFACED");
+                    "EVENT_DECO_VIOLATION_SURFACED",
+                    (int32_t)missedStopRemainSec_);
 
         bool advisoryWasActive = postViolationAdvisory_;
 
@@ -1343,7 +1479,8 @@ void DiveComputerApp::endDive() {
 
         if (!advisoryWasActive) {
             logDiveEvent(DiveEventType::EVENT_POST_VIOLATION_ADVISORY_STARTED,
-                         "EVENT_POST_VIOLATION_ADVISORY_STARTED");
+                        "EVENT_POST_VIOLATION_ADVISORY_STARTED",
+                        POST_VIOLATION_ADVISORY_HOURS);
         }
 
         Serial.printf("[DECO] Post violation advisory until epoch=%lu\n",
@@ -1589,6 +1726,12 @@ void DiveComputerApp::updateBatteryLowPopup() {
         Serial.print(batteryPct);
         Serial.println("%");
 
+        if (state_ == SystemState::Dive) {
+            logDiveEvent(DiveEventType::EVENT_BATTERY_LOW,
+                        "EVENT_BATTERY_LOW",
+                        batteryPct);
+        }
+
         beep(ALARM_FREQ_BATTERY_LOW, 80);
 
     }
@@ -1615,25 +1758,79 @@ void DiveComputerApp::updatePostViolationAdvisory() {
     Serial.println("[DECO] Post violation advisory ended");
 
     logDiveEvent(DiveEventType::EVENT_POST_VIOLATION_ADVISORY_ENDED,
-                 "EVENT_POST_VIOLATION_ADVISORY_ENDED");
+                "EVENT_POST_VIOLATION_ADVISORY_ENDED",
+                0);
+
 }
 
+void DiveComputerApp::recordDiveSample(uint16_t ndlOrTtsMin) {
+    if (dive_.sampleCount >= BDC_MAX_DIVE_SAMPLES) {
+        if (!dive_.sampleOverflowWarned) {
+            dive_.sampleOverflowWarned = true;
+            Serial.println("[LOG] sample buffer full; further samples dropped");
+        }
+        return;
+    }
 
-void DiveComputerApp::logDiveEvent(DiveEventType type, const char* eventName) {
     uint32_t elapsedSec = 0;
 
     if (dive_.diveStartMs > 0) {
         elapsedSec = (millis() - dive_.diveStartMs) / 1000UL;
     }
 
-    Serial.printf("[EVENT] %s type=%u elapsed=%lus depth=%.1fm ceiling=%.1fm stop=%um remain=%lus\n",
+    DiveSample& s = dive_.samples[dive_.sampleCount];
+
+    s.timeSec = elapsedSec;
+    s.depthCm = depthToCmClamped(dive_.depthM);
+    s.tempDeciC = tempToDeciCClamped(dive_.tempC);
+    s.ndlOrTtsMin = ndlOrTtsMin;
+
+    dive_.sumDepthCm += (uint32_t)s.depthCm;
+    dive_.sampleCount++;
+}
+
+void DiveComputerApp::logDiveEvent(DiveEventType type,
+                                   const char* eventName,
+                                   int32_t value) {
+    uint32_t elapsedSec = 0;
+
+    if (dive_.diveStartMs > 0) {
+        elapsedSec = (millis() - dive_.diveStartMs) / 1000UL;
+    }
+
+    Serial.printf("[EVENT] %s type=%u elapsed=%lus value=%ld depth=%.1fm ceiling=%.1fm stop=%um remain=%lus\n",
                   eventName,
                   (unsigned)static_cast<uint8_t>(type),
                   (unsigned long)elapsedSec,
+                  (long)value,
                   dive_.depthM,
                   dive_.ceilingDepthM,
                   dive_.decoStopDepthM,
                   (unsigned long)dive_.decoStopRemainSec);
+
+    // Only persist events that belong to the current/pending dive.
+    if (dive_.diveStartMs == 0) {
+        return;
+    }
+
+    if (dive_.eventCount >= BDC_MAX_DIVE_EVENTS) {
+        if (!dive_.eventOverflowWarned) {
+            dive_.eventOverflowWarned = true;
+            Serial.println("[LOG] event buffer full; further events dropped");
+        }
+        return;
+    }
+
+    DiveEvent& e = dive_.events[dive_.eventCount];
+
+    e.timeSec = elapsedSec;
+    e.type = static_cast<uint8_t>(type);
+    e.reserved[0] = 0;
+    e.reserved[1] = 0;
+    e.reserved[2] = 0;
+    e.value = value;
+
+    dive_.eventCount++;
 }
 
 bool DiveComputerApp::isBatteryLowPopupActive() const {

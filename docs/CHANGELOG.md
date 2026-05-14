@@ -4,6 +4,32 @@
 본 문서는 BackupDiveComputer 프로젝트의 주요 변경 사항을 기록한다.
 ---
 
+## v1.3.7-dev
+
+### Added
+- Added native DiveSample and DiveEvent persistence.
+- Added full native BDC log layout: `DiveLogHeader + DiveSample[] + DiveEvent[]`.
+- Added persistent event recording for DECO, Safety Stop, ceiling violation, missed DECO, re-entry, ascent warning, and battery low events.
+- Added header-only update path for RTS/GPS time correction without dropping samples/events.
+- Added native log policy foundation for future Subsurface XML/UDDF/CSV export.
+
+### Changed
+- Bumped firmware version to `v1.3.7-dev`.
+- Bumped native BDC log format version to `3`.
+- Extended `DiveEvent.value` to support event-specific payloads.
+- Extended `DiveSample.timeSec` for longer dive duration compatibility.
+- Changed last dive storage from header-only to full native log persistence.
+
+### Fixed
+- Prevented time correction from overwriting full dive payload.
+- Improved DECO/Safety Stop event traceability in saved logs.
+
+### Notes
+- Experimental prototype only. Not for real diving.
+- Native `.bdc` log remains the source of truth.
+- Subsurface-compatible XML/UDDF export will be generated later from native logs.
+
+
 ## Unreleased
 
 ### Added
