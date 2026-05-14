@@ -72,7 +72,10 @@ uint8_t Buhlmann::mapCeilingToDecoStopDepth(float ceilingDepthM) {
         return 0;
     }
 
-    if (ceilingDepthM <= 3.0f) return 3;
+    if (ceilingDepthM <= (float)DECO_LAST_STOP_DEPTH_M) {
+        return DECO_LAST_STOP_DEPTH_M;
+    }
+
     if (ceilingDepthM <= 6.0f) return 6;
     if (ceilingDepthM <= 9.0f) return 9;
     if (ceilingDepthM <= 12.0f) return 12;
@@ -83,13 +86,12 @@ uint8_t Buhlmann::mapCeilingToDecoStopDepth(float ceilingDepthM) {
 }
 
 uint8_t Buhlmann::getNextShallowerStopDepth(uint8_t stopDepthM) {
-    if (stopDepthM <= 3) {
+    if (stopDepthM <= DECO_LAST_STOP_DEPTH_M) {
         return 0;
     }
 
     return stopDepthM - 3;
 }
-
 
 void Buhlmann::init(float surfacePressureBar) {
     surfacePressureBar_ = surfacePressureBar;
@@ -263,6 +265,7 @@ DecoInfo Buhlmann::calculateDeco(float ambientBar, float ascentRateBarPerMin) co
     info.stop_depth_m = 0;
     info.next_stop_depth_m = 0;
     info.stop_time_min = 0;
+    info.stop_time_sec = 0;
     info.tts_min = 0;
     info.ceiling_gt_max_stop = false;
 
@@ -299,33 +302,42 @@ DecoInfo Buhlmann::calculateDeco(float ambientBar, float ascentRateBarPerMin) co
     float ascentRateMpm = ascentRateBarPerMin * 10.0f;
     if (ascentRateMpm < 1.0f) ascentRateMpm = 10.0f;
 
-    uint16_t totalTime = 0;
+    const uint16_t DECO_SIM_STEP_SEC = 20;
+
+    uint32_t totalTimeSec = 0;
 
     if (currentDepthM > stopDepth) {
-        totalTime += (uint16_t)ceilf((currentDepthM - stopDepth) / ascentRateMpm);
+        totalTimeSec += (uint32_t)ceilf(
+            ((currentDepthM - stopDepth) / ascentRateMpm) * 60.0f
+        );
     }
 
     int currentStop = stopDepth;
 
-    while (currentStop > 0 && totalTime < 999) {
+    while (currentStop > 0 && totalTimeSec < 999UL * 60UL) {
         float stopAmbient = surfacePressureBar_ + currentStop / 10.0f;
         float ppN2Stop = (stopAmbient - 0.0627f) * getGasFN2();
 
-        uint16_t stopTime = 0;
+        uint32_t stopTimeSec = 0;
         bool canAscend = false;
 
-        while (!canAscend && stopTime < 180) {
+        while (!canAscend && stopTimeSec < 180UL * 60UL) {
+            float stepMin = (float)DECO_SIM_STEP_SEC / 60.0f;
+
             for (uint8_t i = 0; i < NUM_COMPARTMENTS; i++) {
                 float k = logf(2.0f) / N2_HALFTIME[i];
-                float e = expf(-k * 1.0f);
+                float e = expf(-k * stepMin);
                 simPN2[i] = ppN2Stop + (simPN2[i] - ppN2Stop) * e;
             }
 
-            stopTime++;
-            totalTime++;
+            stopTimeSec += DECO_SIM_STEP_SEC;
+            totalTimeSec += DECO_SIM_STEP_SEC;
 
             int nextStop = currentStop - 3;
-            if (nextStop < 0) nextStop = 0;
+
+            if (nextStop < (int)DECO_LAST_STOP_DEPTH_M) {
+                nextStop = 0;
+            }
 
             float nextAmbient = surfacePressureBar_ + nextStop / 10.0f;
             float fraction = 0.0f;
@@ -350,22 +362,34 @@ DecoInfo Buhlmann::calculateDeco(float ambientBar, float ascentRateBarPerMin) co
         }
 
         if (currentStop == stopDepth) {
-            info.stop_time_min = stopTime;
+            uint32_t roundedStopTimeSec =
+                ((stopTimeSec + DECO_SIM_STEP_SEC - 1) / DECO_SIM_STEP_SEC) *
+                DECO_SIM_STEP_SEC;
+
+            info.stop_time_sec = roundedStopTimeSec;
+            info.stop_time_min = (uint16_t)ceilf((float)roundedStopTimeSec / 60.0f);
         }
 
-        currentStop -= 3;
+        int nextStopAfterCurrent = currentStop - 3;
+
+        if (nextStopAfterCurrent < (int)DECO_LAST_STOP_DEPTH_M) {
+            nextStopAfterCurrent = 0;
+        }
+
+        currentStop = nextStopAfterCurrent;
 
         if (currentStop > 0) {
-            totalTime += 1;
+            totalTimeSec += 60UL;
         }
     }
 
     if (stopDepth > 0) {
-        totalTime += 1;
+        totalTimeSec += 60UL;
     }
 
-    info.tts_min = totalTime;
+    info.tts_min = (uint16_t)ceilf((float)totalTimeSec / 60.0f);
     return info;
+
 }
 
 float Buhlmann::getTissuePressure(uint8_t i) const {

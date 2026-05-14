@@ -1050,9 +1050,6 @@ void uiDrawDiveDeco(float depthM,
         } else if (depthM > (float)stopDepthM + DECO_STOP_DEEP_MARGIN_M) {
             actionText = "ASCEND";
             actionArrow = 1;
-        } else if (depthM > (float)stopDepthM + DECO_STOP_HOLD_MARGIN_M) {
-            actionText = "ASCEND";
-            actionArrow = 1;
         } else {
             actionText = "HOLD";
             actionArrow = 0;

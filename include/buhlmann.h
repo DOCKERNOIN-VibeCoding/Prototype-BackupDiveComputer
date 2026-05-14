@@ -12,6 +12,7 @@ struct DecoInfo {
     uint8_t stop_depth_m;
     uint8_t next_stop_depth_m;
     uint16_t stop_time_min;
+    uint32_t stop_time_sec;
     uint16_t tts_min;
     bool ceiling_gt_max_stop;
 };

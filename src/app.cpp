@@ -887,43 +887,45 @@ if (dive_.depthM < DIVE_END_DEPTH_M) {
         }
     }
 
-    // ------------------------------------------------------------
-    // Dive phase logic
-    // ------------------------------------------------------------
+// ------------------------------------------------------------
+// Dive phase logic
+// ------------------------------------------------------------
+//
+// DECO.STOP has priority over Safety Stop.
+// Even if the diver enters the 3m~6m safety stop zone,
+// active decompression obligation must be handled first.
+if (dive_.phase != DivePhase::Deco) {
+    DecoInfo priorityDecoInfo = deco_.calculateDeco(ambientBar, 1.0f);
+
+    bool decoRequired =
+        priorityDecoInfo.ceiling_depth_m > 0.5f ||
+        priorityDecoInfo.stop_depth_m > 0 ||
+        priorityDecoInfo.ceiling_gt_max_stop;
+
+    if (decoRequired) {
+        dive_.phase = DivePhase::Deco;
+        dive_.decoEntered = true;
+
+        dive_.decoStopDepthM = priorityDecoInfo.stop_depth_m;
+        dive_.decoStopTimeMin = priorityDecoInfo.stop_time_min;
+        dive_.decoTtsMin = priorityDecoInfo.tts_min;
+        dive_.ceilingDepthM = priorityDecoInfo.ceiling_depth_m;
+        dive_.decoCeilingGtMaxStop = priorityDecoInfo.ceiling_gt_max_stop;
+
+        Serial.println("[DIVE] Enter DECO");
+        logDiveEvent(DiveEventType::EVENT_DECO_REQUIRED,
+                    "EVENT_DECO_REQUIRED");
+
+        beep(ALARM_FREQ_DECO_ENTER, 150);
+        delay(100);
+        beep(ALARM_FREQ_DECO_ENTER, 150);
+        delay(100);
+        beep(ALARM_FREQ_DECO_ENTER, 150);
+    }
+}
+
     switch (dive_.phase) {
         case DivePhase::Normal: {
-            if (dive_.ndlMin == 0) {
-                DecoInfo info = deco_.calculateDeco(ambientBar, 1.0f);
-
-                bool decoRequired =
-                    info.ceiling_depth_m > 0.5f ||
-                    info.stop_depth_m > 0 ||
-                    info.ceiling_gt_max_stop;
-
-                if (decoRequired) {
-                    dive_.phase = DivePhase::Deco;
-                    dive_.decoEntered = true;
-
-                    dive_.decoStopDepthM = info.stop_depth_m;
-                    dive_.decoStopTimeMin = info.stop_time_min;
-                    dive_.decoTtsMin = info.tts_min;
-                    dive_.ceilingDepthM = info.ceiling_depth_m;
-                    dive_.decoCeilingGtMaxStop = info.ceiling_gt_max_stop;
-
-                    Serial.println("[DIVE] Enter DECO");
-                    logDiveEvent(DiveEventType::EVENT_DECO_REQUIRED,
-                                "EVENT_DECO_REQUIRED");
-
-                    beep(ALARM_FREQ_DECO_ENTER, 150);
-                    delay(100);
-                    beep(ALARM_FREQ_DECO_ENTER, 150);
-                    delay(100);
-                    beep(ALARM_FREQ_DECO_ENTER, 150);
-
-                    break;
-                }
-            }
-
 
             if (!dive_.safetyTriggered &&
                 !dive_.safetyCompleted &&
@@ -1073,16 +1075,11 @@ if (dive_.depthM < DIVE_END_DEPTH_M) {
 
             if (dive_.lastDecoStopDepthM != dive_.decoStopDepthM) {
                 dive_.lastDecoStopDepthM = dive_.decoStopDepthM;
-                dive_.decoStopRemainSec = (uint32_t)dive_.decoStopTimeMin * 60UL;
+                dive_.decoStopRemainSec = info.stop_time_sec;
                 dive_.lastDecoStopTickMs = now;
             }
 
-            if (dive_.decoStopRemainSec == 0 && dive_.decoStopTimeMin > 0) {
-                dive_.decoStopRemainSec = (uint32_t)dive_.decoStopTimeMin * 60UL;
-                dive_.lastDecoStopTickMs = now;
-            }
-
-            uint32_t modelRemainSec = (uint32_t)dive_.decoStopTimeMin * 60UL;
+            uint32_t modelRemainSec = info.stop_time_sec;
 
             if (modelRemainSec > 0 && modelRemainSec < dive_.decoStopRemainSec) {
                 dive_.decoStopRemainSec = modelRemainSec;

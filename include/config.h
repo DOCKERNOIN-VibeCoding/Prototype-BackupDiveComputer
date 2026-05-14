@@ -180,6 +180,18 @@
 
 #define DECO_MAX_STOP_DEPTH_M       18.0f
 
+// Last DECO.STOP depth.
+// Supported values:
+//   3 = final stop at 3m
+//   6 = final stop at 6m
+#ifndef DECO_LAST_STOP_DEPTH_M
+#define DECO_LAST_STOP_DEPTH_M      3
+#endif
+
+#if DECO_LAST_STOP_DEPTH_M != 3 && DECO_LAST_STOP_DEPTH_M != 6
+#error "DECO_LAST_STOP_DEPTH_M must be 3 or 6"
+#endif
+
 // DECO.STOP depth tolerance
 //
 // Shallow side is strict because ascending above the stop/ceiling is risky.
