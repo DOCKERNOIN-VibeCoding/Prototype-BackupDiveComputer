@@ -1,7 +1,7 @@
 
 # BackupDiveComputer Log Format Policy
 
-> Status: Draft / v1.3.6-dev  
+> Status: Draft / v1.3.7-dev  
 > Scope: Internal dive log storage, DiveSample/DiveEvent persistence, BLE log transfer policy, and future Subsurface-compatible export policy.  
 > Safety Notice: This project is an experimental prototype and must not be used for real diving.
 
@@ -475,6 +475,125 @@ if obligation cleared:
 else:
     next required stop time is calculated in seconds and rounded up
 ```
+
+### 10.4 Full stop-duration prediction
+
+The DECO stop timer shall represent the predicted total time required at the current stop before the model allows transition to the next shallower stop or DECO clear.
+
+The firmware must not repeatedly display short 20-second fragments when a longer stop is required.
+
+Prohibited behavior:
+
+```text
+DECO.STOP 12m 0:20
+countdown reaches 0:00
+model still requires 12m
+timer resets to 0:20
+repeats multiple times
+```
+
+Required behavior:
+
+```text
+If the current stop requires approximately 60 seconds:
+    display 1:00 from the beginning
+
+If the current stop requires approximately 80 seconds:
+    display 1:20 from the beginning
+```
+
+The Bühlmann calculation may simulate future off-gassing using a copy of the current tissue state. The real tissue state must not be modified by timer prediction.
+
+---
+
+## 추가 섹션: conservative depth
+
+```md
+### 10.5 Conservative stop calculation depth
+
+The displayed DECO stop depth remains the nominal ladder depth.
+
+Example:
+
+```text
+Displayed stop: DECO.STOP 12m
+```
+
+However, timer prediction uses the deepest valid HOLD depth:
+
+```text
+effectiveCalcDepthM = stopDepthM + DECO_STOP_DEEP_MARGIN_M
+```
+
+Examples:
+
+```text
+18m stop -> calculate at 19.8m
+15m stop -> calculate at 16.8m
+12m stop -> calculate at 13.8m
+9m stop  -> calculate at 10.8m
+6m stop  -> calculate at 7.8m
+3m stop  -> calculate at 4.8m
+```
+
+Rationale:
+
+- Avoid timer jitter from small depth changes caused by current, buoyancy, or sensor noise.
+- Preserve conservative behavior for a backup dive computer.
+- Keep the displayed stop depth simple and consistent with the DECO ladder.
+
+
+---
+
+### 10.6 Displayed rounded timer is authoritative
+
+Once a rounded DECO stop timer is displayed, the diver must complete the displayed countdown before moving to the next shallower stop or clearing DECO.
+
+Example:
+
+```text
+Model-required time: 1:01
+Rounded display:     1:20
+Required behavior:   stay for 1:20
+```
+
+The firmware must not transition to the next stop at 1:01 simply because the live model now allows the transition.
+
+Required transition condition:
+
+```text
+model allows shallower stop or clear
+AND
+displayed local countdown has reached 0
+```
+
+This preserves the conservative 20-second round-up policy.
+
+
+---
+
+### 10.7 Resync policy
+
+A DECO timer resync is allowed only as a diagnostic safety net.
+
+Normal behavior should not require repeated resyncs.
+
+Acceptable:
+
+```text
+One occasional resync due to calculation/timing mismatch
+```
+
+Suspicious / should be investigated:
+
+```text
+Repeated resync at the same stop depth
+Repeated 0:20 reset at the same stop depth
+Large model remain value restored after local countdown reached 0
+```
+
+The `Resync` Serial log is intentionally kept visible because it indicates a condition that should be reviewed during simulation.
+
 
 ---
 

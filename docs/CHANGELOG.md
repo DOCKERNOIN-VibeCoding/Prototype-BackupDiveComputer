@@ -14,20 +14,21 @@
 - Added native log policy foundation for future Subsurface XML/UDDF/CSV export.
 
 ### Changed
-- Bumped firmware version to `v1.3.7-dev`.
-- Bumped native BDC log format version to `3`.
-- Extended `DiveEvent.value` to support event-specific payloads.
-- Extended `DiveSample.timeSec` for longer dive duration compatibility.
-- Changed last dive storage from header-only to full native log persistence.
+- Changed DECO stop timer calculation to predict the full required stop duration instead of repeatedly returning 20-second fragments.
+- Changed DECO stop timer calculation to use conservative effective calculation depth: `stopDepth + DECO_STOP_DEEP_MARGIN_M`.
+- Changed DECO stop transition policy so a displayed rounded timer must finish before moving to the next shallower stop or clearing DECO.
+- Changed DECO logging policy so `buhlmann.cpp` does not emit repeated calculation logs; `app.cpp` logs only stop start/completion/transition events.
+- Changed DECO entry alarm from repeated short beeps to one long alert.
 
 ### Fixed
-- Prevented time correction from overwriting full dive payload.
-- Improved DECO/Safety Stop event traceability in saved logs.
+- Fixed repeated `0:20 -> 0:00 -> 0:20` DECO stop timer reset behavior.
+- Fixed premature DECO stop transition before the displayed rounded countdown reached zero.
+- Fixed misleading `DECO_STOP_COMPLETED` behavior by tying completion to actual model transition/clear rather than timer fragments.
+- Reduced excessive Serial log spam during DECO stop calculation.
 
 ### Notes
-- Experimental prototype only. Not for real diving.
-- Native `.bdc` log remains the source of truth.
-- Subsurface-compatible XML/UDDF export will be generated later from native logs.
+- `Resync` log output is intentionally kept as a diagnostic signal. It should rarely occur during normal DECO stop operation.
+- DECO entry alarm is emitted each time a new DECO obligation appears after being cleared.
 
 
 ## Unreleased

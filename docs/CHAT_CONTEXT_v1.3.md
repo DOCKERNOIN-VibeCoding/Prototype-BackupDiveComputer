@@ -18,7 +18,7 @@ Repository:
 
 현재 개발 태그 / 스냅샷:
 
-- `v1.3.5-dev`
+- `v1.3.7-dev`
 
 이 태그는 v1.3 개발 중간 스냅샷이며, 정식 안정판이 아니다.
 
@@ -53,6 +53,22 @@ Repository:
 - `f7032c1e38a5631fc0c08aa1d150109c227bfad4`
   - Message: `Clean up v1.3 docs and clarify FO2 MOD policy`
 ```
+
+## v1.3.7 DECO timer and logging decisions
+
+- DECO timer must predict full stop duration, not repeated 20-second fragments.
+- Timer calculation uses simulated off-gassing on copied tissue state.
+- Effective timer calculation depth is `stopDepth + DECO_STOP_DEEP_MARGIN_M`.
+- Displayed stop depth remains nominal ladder depth.
+- Timer is rounded up to 20-second units.
+- Displayed rounded timer must finish before transition to next stop or clear.
+- DECO_STOP_COMPLETED is logged only when model transition/clear occurs after timer completion.
+- `buhlmann.cpp` should not print repetitive calculation logs.
+- `app.cpp` logs stop started/completed/changed events.
+- Resync Serial log remains enabled as a diagnostic signal.
+- NDL 10-second pre-warning was rejected.
+- DECO entry uses one long alarm, and the alarm repeats if DECO clears and later re-enters.
+
 
 ## v1.3.5-dev 현재 구현 상태
 
