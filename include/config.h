@@ -311,8 +311,9 @@
 #define BUZZER_MEDIUM_BEEP_MS     300
 #define BUZZER_LONG_BEEP_MS       500
 #define BUZZER_PATTERN_GAP_MS     120
+#define ALARM_DECO_ENTER_LONG_MS  800
 
-
+#define DECO_DEBUG_VERBOSE 0
 
 #endif
 

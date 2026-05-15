@@ -175,6 +175,109 @@ float Buhlmann::calcCeilingForPN2(uint8_t comp, float pN2, float gf) const {
     return ceiling;
 }
 
+float Buhlmann::calcCeilingBarForPN2Array(const float pN2[], float gf) const {
+    float maxCeiling = 0.0f;
+
+    for (uint8_t i = 0; i < NUM_COMPARTMENTS; i++) {
+        float c = calcCeilingForPN2(i, pN2[i], gf);
+        if (c > maxCeiling) {
+            maxCeiling = c;
+        }
+    }
+
+    return maxCeiling;
+}
+
+float Buhlmann::calcCeilingDepthMForPN2Array(const float pN2[], float gf) const {
+    float ceilingBar = calcCeilingBarForPN2Array(pN2, gf);
+    float depthM = (ceilingBar - surfacePressureBar_) * 10.0f;
+
+    if (depthM < 0.0f) {
+        depthM = 0.0f;
+    }
+
+    return depthM;
+}
+
+uint8_t Buhlmann::mapStopDepthForPN2Array(const float pN2[], float gf) const {
+    float ceilingDepthM = calcCeilingDepthMForPN2Array(pN2, gf);
+    return mapCeilingToDecoStopDepth(ceilingDepthM);
+}
+
+void Buhlmann::simulatePN2AtDepth(
+    float pN2[],
+    float depthM,
+    uint32_t intervalSec
+) const {
+    if (intervalSec == 0) {
+        return;
+    }
+
+    if (depthM < 0.0f) {
+        depthM = 0.0f;
+    }
+
+    float ambientBar = surfacePressureBar_ + depthM / 10.0f;
+    float ppN2Inspired = (ambientBar - 0.0627f) * getGasFN2();
+    float intervalMin = (float)intervalSec / 60.0f;
+
+    for (uint8_t i = 0; i < NUM_COMPARTMENTS; i++) {
+        float k = logf(2.0f) / N2_HALFTIME[i];
+        float e = expf(-k * intervalMin);
+
+        pN2[i] = ppN2Inspired + (pN2[i] - ppN2Inspired) * e;
+    }
+}
+
+uint32_t Buhlmann::simulateStopRemainSec(
+    float pN2[],
+    uint8_t currentStopDepthM,
+    float gf,
+    uint16_t stepSec
+) const {
+    if (currentStopDepthM == 0 || stepSec == 0) {
+        return 0;
+    }
+
+    const uint32_t MAX_SINGLE_STOP_SEC = 180UL * 60UL;
+
+    uint32_t elapsedSec = 0;
+
+    /*
+     * Conservative timer policy:
+     *
+     * Displayed stop depth is the nominal ladder depth.
+     * Timer calculation uses the deepest valid HOLD depth.
+     *
+     * Example:
+     *   displayed stop: 12m
+     *   deep margin:    1.8m
+     *   calc depth:     13.8m
+     */
+    float calcDepthM = (float)currentStopDepthM + DECO_STOP_DEEP_MARGIN_M;
+
+    while (elapsedSec < MAX_SINGLE_STOP_SEC) {
+        uint8_t requiredStop = mapStopDepthForPN2Array(pN2, gf);
+
+        /*
+         * The current stop is complete only when the same criterion that
+         * selected the displayed stop now maps to a shallower stop.
+         *
+         * For example:
+         *   currentStopDepthM = 12
+         *   complete when requiredStop becomes 9, 6, 3, or 0.
+         */
+        if (requiredStop == 0 || requiredStop < currentStopDepthM) {
+            break;
+        }
+
+        simulatePN2AtDepth(pN2, calcDepthM, stepSec);
+        elapsedSec += stepSec;
+    }
+
+    return elapsedSec;
+}
+
 float Buhlmann::getCurrentCeilingBar() const {
     float gf = gfLow_ / 100.0f;
     float maxCeiling = 0.0f;
@@ -315,67 +418,14 @@ DecoInfo Buhlmann::calculateDeco(float ambientBar, float ascentRateBarPerMin) co
     int currentStop = stopDepth;
 
     while (currentStop > 0 && totalTimeSec < 999UL * 60UL) {
-        // Conservative stop-time policy:
-        // The displayed stop depth remains the nominal ladder stop
-        // such as 15m, 12m, 9m, 6m, or 3m.
-        //
-        // However, the stop-time simulation uses the deepest depth that
-        // is still accepted as HOLD for that stop.
-        //
-        // Example:
-        //   15m stop with +1.8m deep margin is calculated as 16.8m.
-        //
-        // This avoids underestimating the required stop time when the diver
-        // stays near the deep edge of the valid stop window, and prevents
-        // timer jitter caused by using instantaneous actual depth.
-        float effectiveStopDepthM =
-            (float)currentStop + DECO_STOP_DEEP_MARGIN_M;
+        uint32_t stopTimeSec = simulateStopRemainSec(
+            simPN2,
+            (uint8_t)currentStop,
+            gfLow,
+            DECO_SIM_STEP_SEC
+        );
 
-        float stopAmbient = surfacePressureBar_ + effectiveStopDepthM / 10.0f;
-        float ppN2Stop = (stopAmbient - 0.0627f) * getGasFN2();
-
-        uint32_t stopTimeSec = 0;
-        bool canAscend = false;
-
-        while (!canAscend && stopTimeSec < 180UL * 60UL) {
-            float stepMin = (float)DECO_SIM_STEP_SEC / 60.0f;
-
-            for (uint8_t i = 0; i < NUM_COMPARTMENTS; i++) {
-                float k = logf(2.0f) / N2_HALFTIME[i];
-                float e = expf(-k * stepMin);
-                simPN2[i] = ppN2Stop + (simPN2[i] - ppN2Stop) * e;
-            }
-
-            stopTimeSec += DECO_SIM_STEP_SEC;
-            totalTimeSec += DECO_SIM_STEP_SEC;
-
-            int nextStop = currentStop - 3;
-
-            if (nextStop < (int)DECO_LAST_STOP_DEPTH_M) {
-                nextStop = 0;
-            }
-
-            float nextAmbient = surfacePressureBar_ + nextStop / 10.0f;
-            float fraction = 0.0f;
-
-            if (stopDepth > 0) {
-                fraction = (float)nextStop / (float)stopDepth;
-                if (fraction < 0.0f) fraction = 0.0f;
-                if (fraction > 1.0f) fraction = 1.0f;
-            }
-
-            float gfAtNext = gfHigh + (gfLow - gfHigh) * fraction;
-
-            canAscend = true;
-
-            for (uint8_t i = 0; i < NUM_COMPARTMENTS; i++) {
-                float c = calcCeilingForPN2(i, simPN2[i], gfAtNext);
-                if (c > nextAmbient) {
-                    canAscend = false;
-                    break;
-                }
-            }
-        }
+        totalTimeSec += stopTimeSec;
 
         if (currentStop == stopDepth) {
             uint32_t roundedStopTimeSec =
@@ -383,17 +433,36 @@ DecoInfo Buhlmann::calculateDeco(float ambientBar, float ascentRateBarPerMin) co
                 DECO_SIM_STEP_SEC;
 
             info.stop_time_sec = roundedStopTimeSec;
-            info.stop_time_min = (uint16_t)ceilf((float)roundedStopTimeSec / 60.0f);
+            info.stop_time_min =
+                (uint16_t)ceilf((float)roundedStopTimeSec / 60.0f);
+
+            //Serial.printf(
+            //    "[DECO] Stop %dm remain=%lus calcDepth=%.1fm gf=%.2f\n",
+            //    currentStop,
+            //    (unsigned long)roundedStopTimeSec,
+            //    (float)currentStop + DECO_STOP_DEEP_MARGIN_M,
+            //    gfLow
+            //);
         }
 
-        int nextStopAfterCurrent = currentStop - 3;
+        uint8_t nextRequiredStop = mapStopDepthForPN2Array(simPN2, gfLow);
 
-        if (nextStopAfterCurrent < (int)DECO_LAST_STOP_DEPTH_M) {
-            nextStopAfterCurrent = 0;
+        /*
+         * Safety guard:
+         * If the simulated tissues still require the same or deeper stop
+         * after MAX_SINGLE_STOP_SEC, avoid an infinite loop.
+         */
+        if (nextRequiredStop >= currentStop) {
+            break;
         }
 
-        currentStop = nextStopAfterCurrent;
+        currentStop = nextRequiredStop;
 
+        /*
+         * Approximate ascent time between stops.
+         * This is TTS-only bookkeeping. The actual tissue simulation for
+         * stop clearance is handled inside simulateStopRemainSec().
+         */
         if (currentStop > 0) {
             totalTimeSec += 60UL;
         }

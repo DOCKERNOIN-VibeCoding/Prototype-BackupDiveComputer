@@ -64,6 +64,24 @@ private:
     float calcMValue(uint8_t comp, float ambientBar) const;
     float calcCeilingForComp(uint8_t comp, float gf) const;
     float calcCeilingForPN2(uint8_t comp, float pN2, float gf) const;
+
+    float calcCeilingBarForPN2Array(const float pN2[], float gf) const;
+    float calcCeilingDepthMForPN2Array(const float pN2[], float gf) const;
+    uint8_t mapStopDepthForPN2Array(const float pN2[], float gf) const;
+
+    void simulatePN2AtDepth(
+        float pN2[],
+        float depthM,
+        uint32_t intervalSec
+    ) const;
+
+    uint32_t simulateStopRemainSec(
+        float pN2[],
+        uint8_t currentStopDepthM,
+        float gf,
+        uint16_t stepSec
+    ) const;
+
 };
 
 #endif
