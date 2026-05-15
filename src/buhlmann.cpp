@@ -315,7 +315,23 @@ DecoInfo Buhlmann::calculateDeco(float ambientBar, float ascentRateBarPerMin) co
     int currentStop = stopDepth;
 
     while (currentStop > 0 && totalTimeSec < 999UL * 60UL) {
-        float stopAmbient = surfacePressureBar_ + currentStop / 10.0f;
+        // Conservative stop-time policy:
+        // The displayed stop depth remains the nominal ladder stop
+        // such as 15m, 12m, 9m, 6m, or 3m.
+        //
+        // However, the stop-time simulation uses the deepest depth that
+        // is still accepted as HOLD for that stop.
+        //
+        // Example:
+        //   15m stop with +1.8m deep margin is calculated as 16.8m.
+        //
+        // This avoids underestimating the required stop time when the diver
+        // stays near the deep edge of the valid stop window, and prevents
+        // timer jitter caused by using instantaneous actual depth.
+        float effectiveStopDepthM =
+            (float)currentStop + DECO_STOP_DEEP_MARGIN_M;
+
+        float stopAmbient = surfacePressureBar_ + effectiveStopDepthM / 10.0f;
         float ppN2Stop = (stopAmbient - 0.0627f) * getGasFN2();
 
         uint32_t stopTimeSec = 0;

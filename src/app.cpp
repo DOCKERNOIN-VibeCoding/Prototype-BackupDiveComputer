@@ -8,6 +8,7 @@
 
 #include <math.h>
 #include <limits.h>
+#include <string.h>
 
 #if defined(ESP32)
 #include <esp_timer.h>
@@ -719,11 +720,36 @@ bool DiveComputerApp::shouldShowChargingSplash(uint32_t now) const {
            CHARGING_SPLASH_DURATION_MS;
 }
 
+void DiveComputerApp::resetDiveRuntime() {
+    memset(&dive_, 0, sizeof(dive_));
+
+    dive_.phase = DivePhase::Normal;
+    dive_.minTempC = 99.0f;
+    dive_.ndlMin = 99;
+
+    dive_.decoStopDepthM = 0;
+    dive_.lastDecoStopDepthM = 0;
+    dive_.decoStopTimeMin = 0;
+    dive_.decoStopRemainSec = 0;
+    dive_.lastDecoStopTickMs = 0;
+    dive_.decoTtsMin = 0;
+    dive_.ceilingDepthM = 0.0f;
+
+    dive_.sampleCount = 0;
+    dive_.eventCount = 0;
+    dive_.sumDepthCm = 0;
+
+    dive_.sampleOverflowWarned = false;
+    dive_.eventOverflowWarned = false;
+    dive_.ascentWarnActive = false;
+    dive_.decoStopCompletedEventLogged = false;
+}
+
 void DiveComputerApp::startDive() {
     bool repetitiveDive = lastDiveEndEpochSec_ > 0;
     uint32_t surfaceIntervalSec = getSurfaceIntervalSec();
 
-    dive_ = DiveRuntime();
+    resetDiveRuntime();
 
     missedStopDepthM_ = 0.0f;
     missedStopRemainSec_ = 0;
@@ -1130,6 +1156,14 @@ if (dive_.phase != DivePhase::Deco) {
                 dive_.ceilingDepthM <= 0.5f &&
                 dive_.decoStopDepthM == 0) {
 
+                uint8_t completedStopDepthM = dive_.lastDecoStopDepthM;
+
+                if (completedStopDepthM > 0) {
+                    logDiveEvent(DiveEventType::EVENT_DECO_STOP_COMPLETED,
+                                "EVENT_DECO_STOP_COMPLETED",
+                                (int32_t)completedStopDepthM * 100);
+                }
+
                 dive_.phase = DivePhase::Normal;
 
                 dive_.decoStopDepthM = 0;
@@ -1179,25 +1213,61 @@ if (dive_.phase != DivePhase::Deco) {
                 // ------------------------------------------------------------
                 // Active DECO stop handling
                 // ------------------------------------------------------------
-                if (dive_.lastDecoStopDepthM != dive_.decoStopDepthM) {
-                    dive_.lastDecoStopDepthM = dive_.decoStopDepthM;
+                uint8_t previousStopDepthM = dive_.lastDecoStopDepthM;
+                uint8_t currentStopDepthM = dive_.decoStopDepthM;
+
+                if (previousStopDepthM != currentStopDepthM) {
+                    // Previous stop is completed only when the model moves to
+                    // a shallower stop or clears DECO.
+                    if (previousStopDepthM > 0 &&
+                        (currentStopDepthM == 0 || currentStopDepthM < previousStopDepthM)) {
+
+                        logDiveEvent(DiveEventType::EVENT_DECO_STOP_COMPLETED,
+                                    "EVENT_DECO_STOP_COMPLETED",
+                                    (int32_t)previousStopDepthM * 100);
+                    }
+
+                    dive_.lastDecoStopDepthM = currentStopDepthM;
                     dive_.decoStopRemainSec = info.stop_time_sec;
                     dive_.lastDecoStopTickMs = now;
                     dive_.decoStopCompletedEventLogged = false;
 
-                    if (dive_.decoStopDepthM > 0) {
+                    if (currentStopDepthM > 0) {
                         logDiveEvent(DiveEventType::EVENT_DECO_STOP_STARTED,
-                                     "EVENT_DECO_STOP_STARTED",
-                                     (int32_t)dive_.decoStopDepthM * 100);
+                                    "EVENT_DECO_STOP_STARTED",
+                                    (int32_t)currentStopDepthM * 100);
                     }
                 }
 
+
                 uint32_t modelRemainSec = info.stop_time_sec;
 
-                if (modelRemainSec > 0 &&
-                    modelRemainSec < dive_.decoStopRemainSec) {
-                    dive_.decoStopRemainSec = modelRemainSec;
+                if (modelRemainSec > 0) {
+                    if (dive_.decoStopRemainSec == 0) {
+                        // Local countdown reached 0, but the decompression model
+                        // still requires the same stop. Continue the stop.
+                        dive_.decoStopRemainSec = modelRemainSec;
+                        dive_.lastDecoStopTickMs = now;
+
+                        Serial.printf("[DECO] Continuing %um stop, model remain=%lus\n",
+                                    dive_.decoStopDepthM,
+                                    (unsigned long)modelRemainSec);
+                    } else if (modelRemainSec + 20UL < dive_.decoStopRemainSec) {
+                        // Model now says less time is needed. Resync downward,
+                        // but avoid jitter from 20-second rounding.
+                        dive_.decoStopRemainSec = modelRemainSec;
+                    } else if (modelRemainSec > dive_.decoStopRemainSec + 20UL) {
+                        // Model says more time is needed, for example because the diver
+                        // stayed deeper within the allowed stop window.
+                        dive_.decoStopRemainSec = modelRemainSec;
+                        dive_.lastDecoStopTickMs = now;
+
+                        Serial.printf("[DECO] Extending %um stop, model remain=%lus\n",
+                                    dive_.decoStopDepthM,
+                                    (unsigned long)modelRemainSec);
+                    }
                 }
+
 
                 bool atDecoStop =
                     dive_.decoStopDepthM > 0 &&
@@ -1212,15 +1282,6 @@ if (dive_.phase != DivePhase::Deco) {
                         if (deltaSec > 0) {
                             if (deltaSec >= dive_.decoStopRemainSec) {
                                 dive_.decoStopRemainSec = 0;
-
-                                if (!dive_.decoStopCompletedEventLogged &&
-                                    dive_.decoStopDepthM > 0) {
-                                    dive_.decoStopCompletedEventLogged = true;
-
-                                    logDiveEvent(DiveEventType::EVENT_DECO_STOP_COMPLETED,
-                                                 "EVENT_DECO_STOP_COMPLETED",
-                                                 (int32_t)dive_.decoStopDepthM * 100);
-                                }
                             } else {
                                 dive_.decoStopRemainSec -= deltaSec;
                             }
@@ -1232,10 +1293,27 @@ if (dive_.phase != DivePhase::Deco) {
                     dive_.lastDecoStopTickMs = now;
                 }
 
+                // Post-countdown resync:
+                // If the local countdown reached 0 but the decompression model still
+                // requires the same stop, do not leave the UI at "0:00 HOLD".
+                // Refill the timer from the model's remaining stop time.
+                if (dive_.decoStopDepthM > 0 &&
+                    dive_.decoStopRemainSec == 0 &&
+                    modelRemainSec > 0) {
+
+                    dive_.decoStopRemainSec = modelRemainSec;
+                    dive_.lastDecoStopTickMs = now;
+
+                    Serial.printf("[DECO] Resync %um stop after countdown, model remain=%lus\n",
+                                dive_.decoStopDepthM,
+                                (unsigned long)modelRemainSec);
+                }
+
                 if (dive_.decoStopDepthM > 0) {
                     lastRequiredDecoStopDepthM_ = (float)dive_.decoStopDepthM;
                     lastRequiredDecoStopRemainSec_ = dive_.decoStopRemainSec;
                 }
+
             }
 
             // ------------------------------------------------------------
@@ -1269,6 +1347,14 @@ if (dive_.phase != DivePhase::Deco) {
             // Legacy / secondary clear path
             // ------------------------------------------------------------
             if (dive_.ceilingDepthM <= 0.0f && dive_.ndlMin > 0) {
+                uint8_t completedStopDepthM = dive_.lastDecoStopDepthM;
+
+                if (completedStopDepthM > 0) {
+                    logDiveEvent(DiveEventType::EVENT_DECO_STOP_COMPLETED,
+                                "EVENT_DECO_STOP_COMPLETED",
+                                (int32_t)completedStopDepthM * 100);
+                }
+
                 dive_.phase = DivePhase::Normal;
 
                 dive_.decoStopDepthM = 0;
@@ -1278,6 +1364,7 @@ if (dive_.phase != DivePhase::Deco) {
                 dive_.decoTtsMin = 0;
 
                 Serial.println("[DIVE] DECO cleared");
+
 
                 if (activeDecoViolation_) {
                     activeDecoViolation_ = false;

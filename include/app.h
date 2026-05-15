@@ -152,6 +152,8 @@ private:
 private:
     void setState(SystemState newState);
 
+    void resetDiveRuntime();
+
     void handleSurface();
     void handleDive();
     void handlePostDive();
